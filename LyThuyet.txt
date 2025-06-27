@@ -1,0 +1,88 @@
+I. Phân loại đa nhãn là gì?
+
+Phân loại đa nhãn (multi-label classification) là một bài toán học máy trong đó một mẫu dữ liệu 
+(instance) có thể được gán đồng thời nhiều nhãn (labels) khác nhau, thay vì chỉ một nhãn duy nhất 
+như trong phân loại đơn nhãn (single-label classification). Ví dụ, một bức ảnh có thể vừa được 
+gắn nhãn là "mèo", "chó" và "cây cối" cùng lúc nếu nó chứa cả ba đối tượng này.
+
+1.1 Đặc điểm chính của phân loại đa nhãn:
+- Mỗi mẫu dữ liệu có thể thuộc về nhiều lớp (class) cùng một lúc.
+- Các nhãn thường không loại trừ lẫn nhau (non-mutually exclusive).
+- Đầu ra của mô hình là một tập hợp nhãn (thường biểu diễn dưới dạng vector nhị phân, ví dụ: 
+  [1, 0, 1] cho biết mẫu thuộc nhãn 1 và 3, không thuộc nhãn 2).
+
+1.2 Ví dụ thực tế:
+- Phân loại cảm xúc trong văn bản: Một đoạn văn có thể vừa mang cảm xúc "vui vẻ" vừa "lãng mạn".
+- Phân loại nội dung hình ảnh: Một bức ảnh có thể chứa nhiều đối tượng như "biển", "mặt trời" và 
+"tàu thuyền".
+
+
+II. Ứng dụng kỹ thuật học sâu trong phân loại đa nhãn
+
+Học sâu (deep learning) được sử dụng trong phân loại đa nhãn để xây dựng các mô hình có khả năng 
+học các đặc trưng phức tạp từ dữ liệu thô (như hình ảnh, văn bản, âm thanh) và dự đoán tập hợp 
+nhãn chính xác. Dưới đây là cách học sâu được áp dụng trong phân loại đa nhãn:
+
+2.1 Mô hình học sâu phổ biến:
+   - Mạng nơ-ron tích chập (CNN): Thường được sử dụng cho dữ liệu hình ảnh. CNN có thể trích 
+	 xuất đặc trưng không gian từ ảnh và dự đoán nhiều nhãn. Ví dụ: ResNet, VGG, hoặc EfficientNet.
+   
+   - Mạng nơ-ron hồi quy (RNN) hoặc Transformer: Thường được dùng cho dữ liệu tuần tự như văn 
+	 bản hoặc âm thanh. Các mô hình như LSTM, GRU, hoặc BERT có thể học các mối quan hệ ngữ cảnh 
+	 trong dữ liệu để dự đoán nhiều nhãn.
+   
+   - Mạng nơ-ron hoàn toàn kết nối (Fully Connected Networks): Có thể được sử dụng cho dữ 
+	 liệu có cấu trúc hoặc kết hợp với các mô hình khác.
+
+2.2 Kiến trúc mô hình trong phân loại đa nhãn:
+   - Hàm mất mát (Loss Function): Trong phân loại đa nhãn, hàm mất mát phổ biến là Binary 
+	 Cross-Entropy (BCE), được áp dụng độc lập cho từng nhãn. Mỗi nhãn được xem như một bài 
+	 toán phân loại nhị phân (thuộc hoặc không thuộc nhãn đó).
+	 
+   - Hàm kích hoạt (Activation Function): Ở lớp đầu ra, hàm sigmoid thường được sử dụng thay vì 
+	 softmax (dùng trong phân loại đơn nhãn), vì sigmoid cho phép dự đoán độc lập từng nhãn với 
+	 xác suất từ 0 đến 1.
+	 
+   - Kiến trúc đầu ra: Lớp đầu ra có số nơ-ron bằng số nhãn, mỗi nơ-ron đại diện cho xác suất 
+	 của một nhãn cụ thể.
+
+2.3 Quy trình áp dụng học sâu:
+   - Tiền xử lý dữ liệu: Chuẩn hóa dữ liệu đầu vào (ví dụ: chuẩn hóa giá trị pixel của ảnh, 
+	 mã hóa văn bản).
+   
+   - Xây dựng mô hình: Sử dụng các kiến trúc học sâu như CNN, RNN hoặc Transformer, với lớp đầu 
+	 ra được thiết kế cho phân loại đa nhãn.
+   - Huấn luyện: Tối ưu hóa mô hình bằng cách sử dụng các thuật toán tối ưu như Adam, với hàm mất 
+	 mát như BCE.
+   
+   - Đánh giá: Sử dụng các độ đo như F1-score, Hamming Loss, hoặc Accuracy per label để đánh giá 
+	 hiệu suất mô hình, vì các nhãn không độc lập.
+
+2.4 Ví dụ ứng dụng cụ thể:
+   - Xử lý ảnh: Một mô hình CNN như ResNet có thể được huấn luyện để nhận diện nhiều đối tượng 
+	 trong một bức ảnh (ví dụ: phát hiện "ô tô", "người", "cây" trong cùng một ảnh).
+   
+   - Xử lý ngôn ngữ tự nhiên (NLP): Một mô hình Transformer như BERT có thể được sử dụng để phân 
+	 loại cảm xúc trong văn bản, ví dụ: gán nhãn "tích cực", "hài hước", và "lãng mạn" cho một 
+	 đoạn văn.
+   
+   - Y học: Phân loại đa nhãn trên hình ảnh y tế (như X-quang) để phát hiện nhiều bệnh lý cùng 
+	 lúc (ví dụ: viêm phổi, tràn dịch màng phổi).
+
+2.5 Thách thức và cách giải quyết:
+   - Tương quan giữa các nhãn: Một số nhãn có thể có mối quan hệ với nhau (ví dụ: "mèo" và "chó" 
+	 thường không xuất hiện cùng lúc). Các kỹ thuật như Graph Neural Networks (GNN) hoặc Label 
+	 Correlation được sử dụng để mô hình hóa mối quan hệ này.
+	 
+   - Dữ liệu không cân bằng: Một số nhãn có thể xuất hiện ít hơn nhiều so với các nhãn khác. Các 
+	 kỹ thuật như oversampling, undersampling, hoặc weighted loss có thể được áp dụng.
+	 
+   - Quy mô lớn: Khi số lượng nhãn lớn, việc huấn luyện trở nên phức tạp. Các phương pháp như 
+	 Label Embedding hoặc Hierarchical Classification được sử dụng để giảm chiều dữ liệu nhãn.
+
+III. Tóm lại
+Phân loại đa nhãn là bài toán gán nhiều nhãn cho một mẫu dữ liệu. Học sâu được ứng dụng trong 
+bài toán này thông qua việc sử dụng các kiến trúc như CNN, RNN, hoặc Transformer, 
+với hàm mất mát và hàm kích hoạt phù hợp (như BCE và sigmoid). Các ứng dụng thực tế của 
+phân loại đa nhãn với học sâu rất đa dạng, từ xử lý hình ảnh, văn bản đến y học, nhưng cần giải 
+quyết các thách thức như tương quan nhãn và dữ liệu không cân bằng.
