@@ -194,9 +194,17 @@ cython_debug/
 .cursorindexingignore
 
 # Custom
-/CNN_MODEL_WITH_MULTI_LABELS_89_FEATURES.h5
-/script/predict_89_features.py
-/script/test.py
+/CNN_MODEL_WITH_MULTI_LABELS_79_FEATURES.h5
+/scripts/predict_89_features.py
+/scripts/test.py
+/scripts/url_features.py
+/scripts/content_features.py
+/scripts/external_features.py
+/scripts/feature_extractor.py
+
+/ISCX-URL-2016
+/feature.csv
+/samples.csv
 
 /Colab_Script_Old.txt
 /Colab_Script_New.txt
