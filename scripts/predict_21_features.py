@@ -5,7 +5,7 @@ import tensorflow as tf
 import pandas as pd
 from tensorflow.keras.models import load_model
 from sklearn.preprocessing import MinMaxScaler
-from url_extractor_21_features import URL_EXTRACTOR
+from script.url_features_extractor import URL_EXTRACTOR
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 DATASET_PATH = os.path.join(BASE_DIR, "feature.csv")
