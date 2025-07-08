@@ -721,12 +721,18 @@ class URL_EXTRACTOR(object):
         return self.url.count('|')
     
     #######################################################################################
-    #                         1.25 Path entension != .txt                                 #
+    #                         1.25 Path entension != .txt/.exe                            #
     #######################################################################################
     
     @timer
-    def has_path_extension(self):
+    def has_path_txt_extension(self):
         if self.path.endswith('.txt'):
+            return 1
+        return 0
+    
+    @timer
+    def has_path_exe_extension(self):
+        if self.path.endswith('.exe'):
             return 1
         return 0
     
@@ -1938,10 +1944,10 @@ class URL_EXTRACTOR(object):
             return -1
 
     #######################################################################################
-    #  _____     __   ____ ___  __  __ ____ ___ _   _ _____   URL's Features: 56          #
-    # |_ _\ \   / /  / ___/ _ \|  \/  | __ )_ _| \ | | ____|  Content's Features: 26      #
+    #  _____     __   ____ ___  __  __ ____ ___ _   _ _____   URL's Features: 59          #
+    # |_ _\ \   / /  / ___/ _ \|  \/  | __ )_ _| \ | | ____|  Content's Features: 27      #
     #  | | \ \ / /  | |  | | | | |\/| |  _ \| ||  \| |  _|    External Features: 6        #
-    #  | |  \ V /   | |__| |_| | |  | | |_) | || |\  | |___   Total Features: 89          #
+    #  | |  \ V /   | |__| |_| | |  | | |_) | || |\  | |___   Total Features: 91          #
     # |___|_ \_(_)   \____\___/|_| _|_|____/___|_|_\_|_____|   (label included)           #
     # |  ___| ____|  / \|_   _| | | |  _ \| ____/ ___|                                    #
     # | |_  |  _|   / _ \ | | | | | | |_) |  _| \___ \                                    #
@@ -1993,7 +1999,8 @@ class URL_EXTRACTOR(object):
             ('has_abnormal_subdomain', self.has_abnormal_subdomain),
             ('has_prefix_suffix', self.has_prefix_suffix),
             ('has_short_svc', self.has_shortening_service),
-            ('has_path_extension', self.has_path_extension),
+            ('has_path_txt_extension', self.has_path_txt_extension),
+            ('has_path_exe_extension', self.has_path_exe_extension),
             ('has_domain_in_brand', self.has_domain_in_brand),
             ('has_brand_in_path', self.has_brand_in_path),
             ('has_sus_tld', self.has_suspecious_tld),
