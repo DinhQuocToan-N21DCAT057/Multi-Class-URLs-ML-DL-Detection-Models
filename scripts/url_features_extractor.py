@@ -14,10 +14,10 @@ import logging
 from functools import wraps
 from pyquery import PyQuery
 from datetime import datetime, timezone
-from requests import get
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, urlencode, urljoin
 from urllib.request import urlopen
+from tqdm import tqdm
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -535,7 +535,7 @@ class URL_EXTRACTOR(object):
     #######################################################################################
 
     @timer
-    def ur_len(self):
+    def url_len(self):
         return len(self.url)
     
     @timer
@@ -1721,7 +1721,7 @@ class URL_EXTRACTOR(object):
         try:
             page = requests.get(self.url, headers=self.headers, timeout=5, allow_redirects=False)
         except:
-            print(f'Fail to fetch: {self.url}')
+            logging.info(f'Fail to fetch: {self.url}')
         if page and page.status_code == 200 and page.content not in [b'', b' ']:
             return 1, page
         return 0, page
@@ -1793,7 +1793,7 @@ class URL_EXTRACTOR(object):
             length_days = (expiration_date - now).days
             return length_days if length_days >= 0 else 0
         except Exception as e:
-            print(f"[WHOIS ERROR] domain_registration_length({self.domain}): {e}")
+            logging.info(f"[WHOIS ERROR] domain_registration_length({self.domain}): {e}")
             return -1
     
     #######################################################################################
@@ -1861,7 +1861,7 @@ class URL_EXTRACTOR(object):
             age_days = (now - creation_date).days
             return age_days if age_days >= 0 else -2
         except Exception as e:
-            print(f"[WHOIS ERROR] domain_age({self.domain}): {e}")
+            logging.info(f"[WHOIS ERROR] domain_age({self.domain}): {e}")
             return -1
 
     #######################################################################################
@@ -1951,106 +1951,105 @@ class URL_EXTRACTOR(object):
 
     @timer
     def extract_to_dataset(self):
-        print(f"Extracting '{self.url}' - Label: '{self.label}'")
         data = {}
-        #URL's Feaures
-        data['url'] = self.url
-        data['url_len'] = self.ur_len()
-        data['hostname_len'] = self.hostname_len()
-        data['entropy'] = self.entropy()
-        data['nb_fragments'] = self.count_fragments()
-        data['nb_dots'] = self.count_dots()
-        data['nb_hyphens'] = self.count_hyphens()
-        data['nb_at'] = self.count_at()
-        data['nb_exclamation'] = self.count_exclamation()
-        data['nb_and'] = self.count_and()
-        data['nb_or'] = self.count_or()
-        data['nb_equal'] = self.count_equal()
-        data['nb_underscore'] = self.count_underscore()
-        data['nb_tilde'] = self.count_tilde()
-        data['nb_percentage'] = self.count_percentage()
-        data['nb_slash'] = self.count_slash()
-        data['nb_dslash'] = self.count_double_slash()
-        data['nb_star'] = self.count_star()
-        data['nb_colon'] = self.count_colon()
-        data['nb_comma'] = self.count_comma()
-        data['nb_semicolumn'] = self.count_semicolumn()
-        data['nb_dollar'] = self.count_dollar()
-        data['nb_space'] = self.count_space()
-        data['nb_http_token'] = self.count_http_token()
-        data['nb_subdomain'] = self.count_subdomain()
-        data['nb_www'] = self.count_www()
-        data['nb_com'] = self.count_com()
-        data['nb_redirection'] = self.count_redirection()
-        data['nb_e_redirection'] = self.count_external_redirection()
-        data['nb_phish_hints'] = self.count_phish_hints()
-        data['has_ip'] = self.having_ip_address()
-        data['has_https'] = self.has_https()
-        data['has_punnycode'] = self.has_punycode()
-        data['has_port'] = self.has_port()
-        data['has_tld_in_path'] = self.has_tld_in_path()
-        data['has_tld_in_subdomain'] = self.has_tld_in_subdomain()
-        data['has_abnormal_subdomain'] = self.has_abnormal_subdomain()
-        data['has_prefix_suffix'] = self.has_prefix_suffix()
-        data['has_short_svc'] = self.has_shortening_service()
-        data['has_path_extension'] = self.has_path_extension()
-        data['has_domain_in_brand'] = self.has_domain_in_brand()
-        data['has_brand_in_path'] = self.has_brand_in_path()
-        data['has_sus_tld'] = self.has_suspecious_tld()
-        data['has_statistical_report'] = self.has_statistical_report()
-        data['word_raw_len'] = self.length_word_raw()
-        data['char_repeat'] = self.char_repeat()
-        data['shortest_word_raw_len'] = self.shortest_word_raw_length()
-        data['shortest_word_raw_host_len'] = self.shortest_word_raw_host_length()
-        data['shortest_word_raw_path_len'] = self.shortest_word_raw_path_length()
-        data['longest_word_raw_len'] = self.longest_word_raw_length()
-        data['longest_word_raw_host_len'] = self.longest_word_raw_host_length()
-        data['longest_word_raw_path_len'] = self.longest_word_raw_path_length()
-        data['avg_word_raw_len'] = self.average_word_raw_length()
-        data['avg_word_raw_host_len'] = self.average_word_raw_host_length()
-        data['avg_word_raw_path_len'] = self.average_word_raw_path_length()
-        data['ratio_digits_url'] = self.ratio_digits_url()
-        data['ratio_digits_host'] = self.ratio_digits_hostname()
-        
-        #Content's Features
-        data['is_alive'] = self.state
-        data['body_len'] = self.body_length()
-        data['script_len'] = self.script_length()
-        data['empty_title'] = self.empty_title()
-        data['nb_hyperlinks'] = self.count_hyperlinks()
-        data['nb_ex_css'] = self.count_external_css()
-        data['nb_ex_css'] = self.count_external_css()
-        data['nb_titles'] = self.nb_titles()
-        data['nb_imgs'] = self.nb_images()
-        data['nb_special_char'] = self.count_special_characters()
-        data['has_login_form'] = self.has_login_form()
-        data['has_ex_favicon'] = self.has_external_favicon()
-        data['has_submit_email'] = self.has_submitting_to_email()
-        data['has_iframe'] = self.has_iframe()
-        data['has_onmouse'] = self.has_on_mouse_action()
-        data['has_popup'] = self.has_popup_window()
-        data['has_right_click'] = self.has_right_click()
-        data['has_copyright_domain'] = self.has_domain_with_copyright()
-        data['ratio_in_hyperlinks'] = self.ratio_internal_hyperlinks()
-        data['ratio_ex_hyperlinks'] = self.ratio_external_hyperlinks()
-        data['ratio_script_special_chars'] = self.ratio_script_to_special_chars()
-        data['ratio_script_body'] = self.ratio_script_to_body()
-        data['ratio_body_special_chars'] = self.ratio_body_to_special_char()
-        data['percent_in_media'] = self.percentile_internal_media()
-        data['percent_ex_media'] = self.percentile_external_media()
-        data['percent_safe_anchor'] = self.percentile_safe_anchor()
-        data['percent_in_links'] = self.percentile_internal_links()
-        
-        #External Features
-        data['whois_reg_domain'] = self.whois_registered_domain()
-        data['domain_reg_len'] = self.domain_registration_length()
-        data['domain_age'] = self.domain_age()
-        data['dns_record'] = self.dns_record()
-        data['google_index'] = self.google_index()
-        data['page_rank'] = self.page_rank()
+        # List of (key, function) pairs for all features
+        feature_funcs = [
+            ('url', lambda: self.url),
+            ('url_len', self.url_len),
+            ('hostname_len', self.hostname_len),
+            ('entropy', self.entropy),
+            ('nb_fragments', self.count_fragments),
+            ('nb_dots', self.count_dots),
+            ('nb_hyphens', self.count_hyphens),
+            ('nb_at', self.count_at),
+            ('nb_exclamation', self.count_exclamation),
+            ('nb_and', self.count_and),
+            ('nb_or', self.count_or),
+            ('nb_equal', self.count_equal),
+            ('nb_underscore', self.count_underscore),
+            ('nb_tilde', self.count_tilde),
+            ('nb_percentage', self.count_percentage),
+            ('nb_slash', self.count_slash),
+            ('nb_dslash', self.count_double_slash),
+            ('nb_star', self.count_star),
+            ('nb_colon', self.count_colon),
+            ('nb_comma', self.count_comma),
+            ('nb_semicolumn', self.count_semicolumn),
+            ('nb_dollar', self.count_dollar),
+            ('nb_space', self.count_space),
+            ('nb_http_token', self.count_http_token),
+            ('nb_subdomain', self.count_subdomain),
+            ('nb_www', self.count_www),
+            ('nb_com', self.count_com),
+            ('nb_redirection', self.count_redirection),
+            ('nb_e_redirection', self.count_external_redirection),
+            ('nb_phish_hints', self.count_phish_hints),
+            ('has_ip', self.having_ip_address),
+            ('has_https', self.has_https),
+            ('has_punnycode', self.has_punycode),
+            ('has_port', self.has_port),
+            ('has_tld_in_path', self.has_tld_in_path),
+            ('has_tld_in_subdomain', self.has_tld_in_subdomain),
+            ('has_abnormal_subdomain', self.has_abnormal_subdomain),
+            ('has_prefix_suffix', self.has_prefix_suffix),
+            ('has_short_svc', self.has_shortening_service),
+            ('has_path_extension', self.has_path_extension),
+            ('has_domain_in_brand', self.has_domain_in_brand),
+            ('has_brand_in_path', self.has_brand_in_path),
+            ('has_sus_tld', self.has_suspecious_tld),
+            ('has_statistical_report', self.has_statistical_report),
+            ('word_raw_len', self.length_word_raw),
+            ('char_repeat', self.char_repeat),
+            ('shortest_word_raw_len', self.shortest_word_raw_length),
+            ('shortest_word_raw_host_len', self.shortest_word_raw_host_length),
+            ('shortest_word_raw_path_len', self.shortest_word_raw_path_length),
+            ('longest_word_raw_len', self.longest_word_raw_length),
+            ('longest_word_raw_host_len', self.longest_word_raw_host_length),
+            ('longest_word_raw_path_len', self.longest_word_raw_path_length),
+            ('avg_word_raw_len', self.average_word_raw_length),
+            ('avg_word_raw_host_len', self.average_word_raw_host_length),
+            ('avg_word_raw_path_len', self.average_word_raw_path_length),
+            ('ratio_digits_url', self.ratio_digits_url),
+            ('ratio_digits_host', self.ratio_digits_hostname),
+            # Content's Features
+            ('is_alive', lambda: self.state),
+            ('body_len', self.body_length),
+            ('script_len', self.script_length),
+            ('empty_title', self.empty_title),
+            ('nb_hyperlinks', self.count_hyperlinks),
+            ('nb_ex_css', self.count_external_css),
+            ('nb_titles', self.nb_titles),
+            ('nb_imgs', self.nb_images),
+            ('nb_special_char', self.count_special_characters),
+            ('has_login_form', self.has_login_form),
+            ('has_ex_favicon', self.has_external_favicon),
+            ('has_submit_email', self.has_submitting_to_email),
+            ('has_iframe', self.has_iframe),
+            ('has_onmouse', self.has_on_mouse_action),
+            ('has_popup', self.has_popup_window),
+            ('has_right_click', self.has_right_click),
+            ('has_copyright_domain', self.has_domain_with_copyright),
+            ('ratio_in_hyperlinks', self.ratio_internal_hyperlinks),
+            ('ratio_ex_hyperlinks', self.ratio_external_hyperlinks),
+            ('ratio_script_special_chars', self.ratio_script_to_special_chars),
+            ('ratio_script_body', self.ratio_script_to_body),
+            ('ratio_body_special_chars', self.ratio_body_to_special_char),
+            ('percent_in_media', self.percentile_internal_media),
+            ('percent_ex_media', self.percentile_external_media),
+            ('percent_safe_anchor', self.percentile_safe_anchor),
+            ('percent_in_links', self.percentile_internal_links),
+            # External Features
+            ('whois_reg_domain', self.whois_registered_domain),
+            ('domain_reg_len', self.domain_registration_length),
+            ('domain_age', self.domain_age),
+            ('dns_record', self.dns_record),
+            ('google_index', self.google_index),
+            ('page_rank', self.page_rank),
+            # Label
+            ('label', lambda: self.label)
+        ]
 
-        #Label
-        data['label'] = self.label
+        for key, func in tqdm(feature_funcs, desc="  Extracting features", unit="feature"):
+            data[key] = func()
 
-        print(f"URL '{self.url}' took '{self.exec_time}' seconds to extract")
         return data

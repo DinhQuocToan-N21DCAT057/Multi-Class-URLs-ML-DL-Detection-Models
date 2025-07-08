@@ -205,6 +205,7 @@ cython_debug/
 /ISCX-URL-2016
 /feature.csv
 /samples.csv
+/malicious_phish.csv
 
 /Colab_Script_Old.txt
 /Colab_Script_New.txt
