@@ -196,7 +196,6 @@ cython_debug/
 # Custom
 /CNN_MODEL_WITH_MULTI_LABELS_79_FEATURES.h5
 /scripts/predict_89_features.py
-/scripts/test.py
 /scripts/url_features.py
 /scripts/content_features.py
 /scripts/external_features.py
