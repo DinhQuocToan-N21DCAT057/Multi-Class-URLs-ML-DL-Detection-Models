@@ -174,7 +174,7 @@ class URL_EXTRACTOR(object):
             self.Title = ''
 
         #Other references
-        self.allbrands_path = open(os.path.join(BASE_DIR, "scripts\\allbrands.txt"), "r")
+        self.allbrands_path = open(os.path.join(BASE_DIR, "scripts", "allbrands.txt"), "r")
         self.allbrands = self.__txt_to_list()
         self.hints = ['wp', 'login', 'includes', 'admin', 'content', 'site', 'images', 'js', 'alibaba', 'css', 'myaccount',
                       'dropbox', 'themes', 'plugins', 'signin', 'view']
