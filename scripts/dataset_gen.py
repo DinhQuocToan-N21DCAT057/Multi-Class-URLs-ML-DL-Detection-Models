@@ -8,7 +8,7 @@ BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='URL Multi-Labels Dataset Generator')
-    parser.add_argument('--file', type=str, required=True, nargs='+', help='Dataset file')
+    parser.add_argument('--file', type=str, required=True, help='Dataset file')
     parser.add_argument('--start_idx', type=int, help='Start index (inclusive)')
     parser.add_argument('--end_idx', type=int, help='End index (exclusive)')
     args = parser.parse_args()
