@@ -2,15 +2,22 @@ import pandas as pd
 from url_features_extractor import URL_EXTRACTOR
 import os
 import argparse
+import sys
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-DATASET_PATH = os.path.join(BASE_DIR, "malicious_phish.csv")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='URL Multi-Labels Dataset Generator')
+    parser.add_argument('--file', type=str, required=True, nargs='+', help='Dataset file')
     parser.add_argument('--start_idx', type=int, help='Start index (inclusive)')
     parser.add_argument('--end_idx', type=int, help='End index (exclusive)')
     args = parser.parse_args()
+
+    if args.file:
+        DATASET_PATH = os.path.join(BASE_DIR, args.file)
+    else:
+        print(f"File {args.file} not found!")
+        sys.exit(1)
 
     df = pd.read_csv(DATASET_PATH)
     total = len(df)

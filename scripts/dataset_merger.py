@@ -17,7 +17,7 @@ if __name__ == "__main__":
         print(f"Directory not found: '{dir_path}'")
         sys.exit(1)
     
-    all_files = glob.glob(os.path.join(dir_path, "*.csv"))
+    all_files = sorted(glob.glob(os.path.join(dir_path, "*.csv")))
     if not all_files:
         print(f"No CSV files found in directory: '{dir_path}'")
         sys.exit(1)
