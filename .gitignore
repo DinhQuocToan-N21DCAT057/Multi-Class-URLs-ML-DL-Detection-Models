@@ -205,6 +205,11 @@ cython_debug/
 /samples.csv
 /malicious_phish.csv
 /scripts/final_dataset_0_217000.csv
+/Dataset-Split
+/Dataset
+/missing_urls.csv
+/processed_malicious_phish.csv
+/test.csv
 
 /Colab_Script_Old.txt
 /Colab_Script_New.txt
