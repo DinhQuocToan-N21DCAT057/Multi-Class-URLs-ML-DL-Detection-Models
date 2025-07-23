@@ -125,12 +125,12 @@ class URL_EXTRACTOR(object):
         )
 
         # Whois and PyQuery Informations
+        self.res = self.get_whois()
+
         try:
             self.whois = whois.query(self.domain).__dict__
-            self.res = self.get_whois()
         except:
             self.whois = None
-            self.res = None
 
         # Page HTML Informations
         if self.page is not None and self.state == 1:
@@ -311,13 +311,13 @@ class URL_EXTRACTOR(object):
     @deadline(5)
     def get_whois(self):
         if self.domain in URL_EXTRACTOR.whois_cache:
-            return self.whois_cache[self.domain]
+            return URL_EXTRACTOR.whois_cache[self.domain]
         try:
             result = whois.whois(self.domain)
-            self.whois_cache[self.domain] = result
+            URL_EXTRACTOR.whois_cache[self.domain] = result
             return result
         except Exception as e:
-            self.whois_cache[self.domain] = None
+            URL_EXTRACTOR.whois_cache[self.domain] = None
             return None
 
     @timer
