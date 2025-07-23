@@ -41,10 +41,15 @@ df_list.append(df1_clean)
 missing_df = pd.concat(df_list, ignore_index=True)
 # missing_df.to_csv("missing_urls.csv", index=False)
 temp = []
-df = missing_df.iloc[0:3]
+df = missing_df.iloc[150:180]
 for row in df.itertuples(index=False):
     data = URL_EXTRACTOR(row.url, row.type).extract_to_dataset()
     temp.append(data)
 
+# data = URL_EXTRACTOR("https://www.microsoft.com/en-us", "benign").extract_to_dataset()
+data = URL_EXTRACTOR("https://www.amazon.com/", "benign").extract_to_dataset()
+temp.append(data)
+
 test_df = pd.DataFrame(temp)
 test_df.to_csv("test.csv", index=False)
+
