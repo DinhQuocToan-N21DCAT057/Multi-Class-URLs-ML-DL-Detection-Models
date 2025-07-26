@@ -2439,3 +2439,93 @@ class URL_EXTRACTOR(object):
             data[key] = func()
 
         return data
+
+    @timer
+    def extract_to_predict(self):
+        data = {}
+        # List of (key, function) pairs for all features
+        feature_funcs = [
+            ("url", lambda: self.url),
+            ("url_len", self.url_len),
+            ("hostname_len", self.hostname_len),
+            ("entropy", self.entropy),
+            ("nb_dots", self.count_dots),
+            ("nb_hyphens", self.count_hyphens),
+            ("nb_exclamation", self.count_exclamation),
+            ("nb_and", self.count_and),
+            ("nb_equal", self.count_equal),
+            ("nb_underscore", self.count_underscore),
+            ("nb_tilde", self.count_tilde),
+            ("nb_percentage", self.count_percentage),
+            ("nb_slash", self.count_slash),
+            ("nb_colon", self.count_colon),
+            ("nb_semicolumn", self.count_semicolumn),
+            ("nb_space", self.count_space),
+            ("nb_http_token", self.count_http_token),
+            ("nb_subdomain", self.count_subdomain),
+            ("nb_www", self.count_www),
+            ("nb_com", self.count_com),
+            ("nb_phish_hints", self.count_phish_hints),
+            ("has_ip", self.having_ip_address),
+            ("has_https", self.has_https),
+            ("has_port", self.has_port),
+            ("has_tld_in_path", self.has_tld_in_path),
+            ("has_tld_in_subdomain", self.has_tld_in_subdomain),
+            ("has_abnormal_subdomain", self.has_abnormal_subdomain),
+            ("has_prefix_suffix", self.has_prefix_suffix),
+            ("has_short_svc", self.has_shortening_service),
+            ("has_path_exe_extension", self.has_path_exe_extension),
+            ("has_domain_in_brand", self.has_domain_in_brand),
+            ("has_sus_tld", self.has_suspecious_tld),
+            ("has_statistical_report", self.has_statistical_report),
+            ("word_raw_len", self.length_word_raw),
+            ("char_repeat", self.char_repeat),
+            ("shortest_word_raw_len", self.shortest_word_raw_length),
+            ("shortest_word_raw_host_len", self.shortest_word_raw_host_length),
+            ("shortest_word_raw_path_len", self.shortest_word_raw_path_length),
+            ("longest_word_raw_len", self.longest_word_raw_length),
+            ("longest_word_raw_host_len", self.longest_word_raw_host_length),
+            ("longest_word_raw_path_len", self.longest_word_raw_path_length),
+            ("avg_word_raw_len", self.average_word_raw_length),
+            ("avg_word_raw_host_len", self.average_word_raw_host_length),
+            ("avg_word_raw_path_len", self.average_word_raw_path_length),
+            ("ratio_digits_url", self.ratio_digits_url),
+            ("ratio_digits_host", self.ratio_digits_hostname),
+            # Content's Features
+            ("is_alive", lambda: self.state),
+            ("body_len", self.body_length),
+            ("script_len", self.script_length),
+            ("empty_title", self.empty_title),
+            ("nb_hyperlinks", self.count_hyperlinks),
+            ("nb_ex_css", self.count_external_css),
+            ("nb_titles", self.nb_titles),
+            ("nb_imgs", self.nb_images),
+            ("nb_special_char", self.count_special_characters),
+            ("has_login_form", self.has_login_form),
+            ("has_ex_favicon", self.has_external_favicon),
+            ("has_copyright_domain", self.has_domain_with_copyright),
+            ("ratio_in_hyperlinks", self.ratio_internal_hyperlinks),
+            ("ratio_script_special_chars", self.ratio_script_to_special_chars),
+            ("ratio_script_body", self.ratio_script_to_body),
+            ("ratio_body_special_chars", self.ratio_body_to_special_char),
+            ("percent_in_media", self.percentile_internal_media),
+            ("percent_ex_media", self.percentile_external_media),
+            ("percent_safe_anchor", self.percentile_safe_anchor),
+            ("percent_in_links", self.percentile_internal_links),
+            # External Features
+            ("whois_reg_domain", self.whois_registered_domain),
+            ("domain_reg_len", self.domain_registration_length),
+            ("domain_age", self.domain_age),
+            ("dns_record", self.dns_record),
+            ("google_index", self.google_index),
+            ("page_rank", self.page_rank),
+            # Label
+            ("label", lambda: self.label),
+        ]
+
+        for key, func in tqdm(
+            feature_funcs, desc="  Extracting features", unit="feature"
+        ):
+            data[key] = func()
+
+        return data
