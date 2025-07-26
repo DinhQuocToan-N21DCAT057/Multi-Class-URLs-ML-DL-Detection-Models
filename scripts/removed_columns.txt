@@ -1,0 +1,3 @@
+nb_fragments, nb_at, nb_or, nb_star, nb_comma, nb_dollar, nb_redirection, nb_e_redirection, has_punnycode, 
+has_submit_email, has_iframe, has_onmouse, has_popup, has_right_click, ratio_ex_hyperlinks, 
+nb_dslash, has_path_txt_extension, has_brand_in_path
