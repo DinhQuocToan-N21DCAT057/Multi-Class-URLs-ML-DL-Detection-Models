@@ -193,7 +193,6 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 # Custom
-/CNN_MODEL_WITH_MULTI_LABELS_79_FEATURES.h5
 /scripts/predict_89_features.py
 /scripts/url_features.py
 /scripts/content_features.py
@@ -215,4 +214,5 @@ cython_debug/
 /Colab_Script_New.txt
 /Colab_Script_New1.txt
 
-/CNN_MODEL_ON_NUMERICAL_FEATURES.keras
+/models/CNN_MODEL_WITH_MULTI_LABELS_79_FEATURES.h5
+/models/CNN_MODEL_WITH_MULTI_LABELS_21_FEATURES.keras
