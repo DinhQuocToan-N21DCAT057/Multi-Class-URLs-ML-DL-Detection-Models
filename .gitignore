@@ -198,6 +198,7 @@ cython_debug/
 /scripts/content_features.py
 /scripts/external_features.py
 /scripts/feature_extractor.py
+/scripts/predict_21_features.py
 
 /ISCX-URL-2016
 /feature.csv
