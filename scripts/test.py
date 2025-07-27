@@ -2,10 +2,9 @@ import pandas as pd
 from url_multi_labels_predictor import URL_PREDICTOR
 
 
-url = "https://account.microsoft.com/account"
+url = "https://defiwallekbespt.net"
 
 predictor = URL_PREDICTOR(url)
-predictor.predict_with_CNN(threshold=0.8, numerical=True)
+predictor.predict_with_XGB(threshold=0.9, numerical=True)
 #predictor.df.to_csv("test.csv", index=False)
 predictor.print_result()
-

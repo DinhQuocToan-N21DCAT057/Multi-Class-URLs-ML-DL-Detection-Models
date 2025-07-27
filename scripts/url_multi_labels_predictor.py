@@ -15,11 +15,15 @@ BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 class URL_PREDICTOR(object):
     def __init__(self, url):
+        self.url = url
         self.CNN_NUMERICAL_MODEL_PATH = os.path.join(BASE_DIR, "models", "CNN_MODEL_ON_NUMERICAL_FEATURES.keras")
         self.CNN_NON_NUMERICAL_MODEL_PATH = os.path.join(BASE_DIR, "models", "CNN_MODEL_ON_NON_NUMERICAL_FEATURES.keras")
+        self.XGB_NUMERICAL_MODEL_PATH = os.path.join(BASE_DIR, "models", "XGB_MODEL_ON_NUMERICAL_FEATURES.pkl")
+        self.XGB_NON_NUMERICAL_MODEL_PATH = os.path.join(BASE_DIR, "models", "XGB_MODEL_ON_NON_NUMERICAL_FEATURES.pkl")
         self.SCALER_PATH = os.path.join(BASE_DIR, "scaler.pkl")
-        self.VECTORIZER_PATH = os.path.join(BASE_DIR, "tfidf_vectorizer.pkl")
-        self.df = self.extract_urls_features_to_df(url)
+        self.CNN_VECTORIZER_PATH = os.path.join(BASE_DIR, "tfidf_vectorizer_CNN.pkl")
+        self.XGB_VECTORIZER_PATH = os.path.join(BASE_DIR, "tfidf_vectorizer_XGB.pkl")
+        self.df = self.extract_url_features_to_df()
         self.y = self.df['label'] if 'label' in self.df.columns else None
         self.ps = PorterStemmer()
         self.corpus = []
@@ -37,10 +41,38 @@ class URL_PREDICTOR(object):
             self.predictions = self.CNN_NON_NUMERICAL_MODEL.predict(self.X2)
             self.predicted_labels = (self.predictions > threshold).astype(int)
 
+    def predict_with_XGB(self, threshold=0.5, numerical=True):
+        if numerical:
+            self.X3_pre_processing()
+            self.XGB_NUMERICAL_MODEL = self.model_loader(self.XGB_NUMERICAL_MODEL_PATH)
+            # Lấy xác suất dự đoán
+            if hasattr(self.XGB_NUMERICAL_MODEL, 'predict_proba'):
+                self.predictions = self.XGB_NUMERICAL_MODEL.predict_proba(self.X3)
+                # Nếu là multi-label, predict_proba trả về list các mảng, cần stack lại
+                if isinstance(self.predictions, list):
+                    self.predictions = np.stack([p[:,1] if p.shape[1]==2 else p for p in self.predictions], axis=1)
+                # Nếu là binary/multi-label dạng (n_samples, n_classes)
+                self.predicted_labels = (self.predictions > threshold).astype(int)
+            else:
+                # Nếu model không có predict_proba (rất hiếm), fallback predict trả về nhãn
+                self.predictions = self.XGB_NUMERICAL_MODEL.predict(self.X3)
+                self.predicted_labels = self.predictions
+        else:
+            self.X4_pre_processing()
+            self.XGB_NON_NUMERICAL_MODEL = self.model_loader(self.XGB_NON_NUMERICAL_MODEL_PATH)
+            if hasattr(self.XGB_NON_NUMERICAL_MODEL, 'predict_proba'):
+                self.predictions = self.XGB_NON_NUMERICAL_MODEL.predict_proba(self.X4)
+                if isinstance(self.predictions, list):
+                    self.predictions = np.stack([p[:,1] if p.shape[1]==2 else p for p in self.predictions], axis=1)
+                self.predicted_labels = (self.predictions > threshold).astype(int)
+            else:
+                self.predictions = self.XGB_NON_NUMERICAL_MODEL.predict(self.X4)
+                self.predicted_labels = self.predictions
+
     def print_result(self):
         if self.predictions is not None and self.predicted_labels is not None:
             for i, (pred, prob) in enumerate(zip(self.predicted_labels, self.predictions)):
-                print(f"\nSample {i + 1} (index: {i}):")
+                print(f"\nSample {i + 1} - Url: {self.url}")
                 for label, p, pl in zip(self.label_names, prob, pred):
                     print(f"{label}: Probability = {p:.4f}, Predicted = {bool(pl)}")
                 if self.y is not None:
@@ -67,18 +99,27 @@ class URL_PREDICTOR(object):
     def X2_pre_processing(self):
         self.X2 = self.df['url']
         self.albumentations(self.X2)
-        self.load_vectorizer()
+        self.load_vectorizer(self.CNN_VECTORIZER_PATH)
         self.X2 = self.cv.transform(self.corpus).toarray()
         self.X2 = np.expand_dims(self.X2, axis=-1)
 
-    def load_vectorizer(self):
+    def load_vectorizer(self, PATH):
         try:
-            if os.path.exists(self.VECTORIZER_PATH):
-                self.cv = joblib.load(self.VECTORIZER_PATH)
-                print(f"{self.VECTORIZER_PATH} loaded successfully!")
+            if os.path.exists(PATH):
+                self.cv = joblib.load(PATH)
+                print(f"{PATH} loaded successfully!")
         except Exception as e:
-            print(f"Error loading {self.VECTORIZER_PATH}: {e}")
+            print(f"Error loading {PATH}: {e}")
             raise
+    
+    def X3_pre_processing(self):
+        self.X3 = self.df.drop(columns = ['label', 'url'])
+    
+    def X4_pre_processing(self):
+        self.X4 = self.df['url']
+        self.albumentations2(self.X4)
+        self.load_vectorizer(self.XGB_VECTORIZER_PATH)
+        self.X4 = self.cv.transform(self.corpus).toarray()
 
     @staticmethod
     def download_stopsword():
@@ -102,12 +143,25 @@ class URL_PREDICTOR(object):
             review = " ".join(review)
             self.corpus.append(review)
 
-    def extract_urls_features_to_df(self, url):
+    def albumentations2(self, X):
+        self.download_stopsword()
+        for i in range(len(X)):
+            print(i, "/", len(X))
+            review = X[i].decode('utf-8') if isinstance(X[i], bytes) else str(X[i])
+            review = re.sub(r'\?.*', '', review)
+            review = re.sub(r'[^a-zA-Z0-9\-\/.]', ' ', review)
+            review = review.lower()
+            review = review.split()
+            review = [self.ps.stem(word) for word in review if word not in set(stopwords.words("english")) and len(word) > 2]
+            review = " ".join(review)
+            self.corpus.append(review)
+
+    def extract_url_features_to_df(self):
         df = []
         try:
-            extractor = URL_EXTRACTOR(url)
+            extractor = URL_EXTRACTOR(self.url)
             data = extractor.extract_to_predict()
-            print(f"  URL '{url}' took {round(extractor.exec_time, 2)} seconds to extract")
+            print(f"  URL '{self.url}' took {round(extractor.exec_time, 2)} seconds to extract")
             df.append(data)
         except Exception as e:
             print(f"Error extracting features: {e}")
@@ -118,8 +172,14 @@ class URL_PREDICTOR(object):
         model = None
         try:
             if os.path.exists(PATH):
-                model = load_model(PATH)
-                print(f"{PATH} loaded successfully!")
+                if PATH.endswith('.keras'):
+                    model = load_model(PATH)
+                    print(f"{PATH} (Keras model) loaded successfully!")
+                elif PATH.endswith('.pkl'):
+                    model = joblib.load(PATH)
+                    print(f"{PATH} (Pickle model) loaded successfully!")
+                else:
+                    raise ValueError(f"Unsupported model file extension for {PATH}")
         except Exception as e:
             print(f"Error loading model: {e}")
             raise
