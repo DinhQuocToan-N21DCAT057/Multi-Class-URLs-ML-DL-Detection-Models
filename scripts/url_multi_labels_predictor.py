@@ -20,16 +20,44 @@ class URL_PREDICTOR(object):
         self.CNN_NON_NUMERICAL_MODEL_PATH = os.path.join(BASE_DIR, "models", "CNN_MODEL_ON_NON_NUMERICAL_FEATURES.keras")
         self.XGB_NUMERICAL_MODEL_PATH = os.path.join(BASE_DIR, "models", "XGB_MODEL_ON_NUMERICAL_FEATURES.pkl")
         self.XGB_NON_NUMERICAL_MODEL_PATH = os.path.join(BASE_DIR, "models", "XGB_MODEL_ON_NON_NUMERICAL_FEATURES.pkl")
+        self.RF_NUMERICAL_MODEL_PATH = os.path.join(BASE_DIR, "models", "RF_MODEL_ON_NUMERICAL_FEATURES.pkl")
+        self.RF_NON_NUMERICAL_MODEL_PATH = os.path.join(BASE_DIR, "models", "RF_MODEL_ON_NON_NUMERICAL_FEATURES.pkl")
         self.SCALER_PATH = os.path.join(BASE_DIR, "scaler.pkl")
         self.CNN_VECTORIZER_PATH = os.path.join(BASE_DIR, "tfidf_vectorizer_CNN.pkl")
-        self.XGB_VECTORIZER_PATH = os.path.join(BASE_DIR, "tfidf_vectorizer_XGB.pkl")
+        self.XGB_RF_VECTORIZER_PATH = os.path.join(BASE_DIR, "tfidf_vectorizer_XGB_RF.pkl")
         self.df = self.extract_url_features_to_df()
         self.y = self.df['label'] if 'label' in self.df.columns else None
         self.ps = PorterStemmer()
         self.corpus = []
         self.label_names = ['benign', 'defacement', 'malware', 'phishing']
 
-    def predict_with_CNN(self, threshold = 0.5, numerical=True):
+
+    def predict_with_RF(self, threshold=0.5, numerical=True):
+        if numerical:
+            self.X3_pre_processing()
+            self.RF_NUMERICAL_MODEL = self.model_loader(self.RF_NUMERICAL_MODEL_PATH)
+            if hasattr(self.RF_NUMERICAL_MODEL, 'predict_proba'):
+                self.predictions = self.RF_NUMERICAL_MODEL.predict_proba(self.X3)
+                # Nếu là multi-label, predict_proba trả về list các mảng, cần stack lại
+                if isinstance(self.predictions, list):
+                    self.predictions = np.stack([p[:,1] if p.shape[1]==2 else p for p in self.predictions], axis=1)
+                self.predicted_labels = (self.predictions > threshold).astype(int)
+            else:
+                self.predictions = self.RF_NUMERICAL_MODEL.predict(self.X3)
+                self.predicted_labels = self.predictions
+        else:
+            self.X4_pre_processing()
+            self.RF_NON_NUMERICAL_MODEL = self.model_loader(self.RF_NON_NUMERICAL_MODEL_PATH)
+            if hasattr(self.RF_NON_NUMERICAL_MODEL, 'predict_proba'):
+                self.predictions = self.RF_NON_NUMERICAL_MODEL.predict_proba(self.X4)
+                if isinstance(self.predictions, list):
+                    self.predictions = np.stack([p[:,1] if p.shape[1]==2 else p for p in self.predictions], axis=1)
+                self.predicted_labels = (self.predictions > threshold).astype(int)
+            else:
+                self.predictions = self.RF_NON_NUMERICAL_MODEL.predict(self.X4)
+                self.predicted_labels = self.predictions
+
+    def predict_with_CNN(self, threshold=0.5, numerical=True):
         if numerical:
             self.X1_pre_processing()
             self.CNN_NUMERICAL_MODEL = self.model_loader(self.CNN_NUMERICAL_MODEL_PATH)
@@ -118,7 +146,7 @@ class URL_PREDICTOR(object):
     def X4_pre_processing(self):
         self.X4 = self.df['url']
         self.albumentations2(self.X4)
-        self.load_vectorizer(self.XGB_VECTORIZER_PATH)
+        self.load_vectorizer(self.XGB_RF_VECTORIZER_PATH)
         self.X4 = self.cv.transform(self.corpus).toarray()
 
     @staticmethod

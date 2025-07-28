@@ -92,62 +92,54 @@ print(X_test3.shape,Y_test3.shape)
 (308208, 71) (308208,)
 (77052, 71) (77052,)
 
-def conf_matrix_multi_label_XGB(X_test, y_test, model, label_names):
-    # Predict class labels (XGBoost outputs direct labels, no argmax needed)
+def conf_matrix_multi_label_RF(X_test, y_test, model, label_names):
     y_pred = model.predict(X_test)
-    
-    # Compute confusion matrix
     cm = confusion_matrix(y_test, y_pred)
-    
-    # Display confusion matrix
     disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=label_names)
     disp.plot(cmap=plt.cm.YlGn)
-    plt.title('CONFUSION MATRIX (XGBoost)')
+    plt.title('CONFUSION MATRIX (Random Forest)')
     plt.show()
-    
-    # Calculate macro F1-score
     f1 = f1_score(y_test, y_pred, average='macro')
     print(f"Macro F1-Score: {f1:.4f}")
-    
-def eval_graph_XGB(results, X_val, y_val):
-    epochs = range(len(results['validation_0']['mlogloss']))
-    
-    # Plot accuracy (1 - merror)
+
+def pr_auc_multi_class_RF(X_test, y_test, model, label_names):
+    y_pred_proba = model.predict_proba(X_test)  # Shape: (n_samples, n_classes)
+    y_test_one_hot = np.eye(len(label_names))[y_test]  # Chuyển y_test sang one-hot
+    n_classes = len(label_names)
     plt.figure(figsize=(14, 7))
-    plt.plot(epochs, [1 - x for x in results['validation_0']['merror']], 'b', label="Validation Accuracy (1 - Error)")
-    plt.legend(loc='upper left')
-    plt.title("ACCURACY GRAPH (XGBoost)")
-    plt.xlabel("Iteration")
-    plt.ylabel("Accuracy")
+    pr_aucs = []
+    for i in range(n_classes):
+        precision, recall, _ = precision_recall_curve(y_test_one_hot[:, i], y_pred_proba[:, i])
+        pr_auc = auc(recall, precision)
+        pr_aucs.append(pr_auc)
+        plt.plot(recall, precision, label=f'{label_names[i]} (PR-AUC = {pr_auc:.2f})')
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.title('PRECISION-RECALL CURVES FOR MULTI-CLASS CLASSIFICATION (Random Forest)')
+    plt.legend(loc='best')
+    plt.grid(True)
     plt.show()
-    
-    # Plot loss
-    plt.figure(figsize=(14, 7))
-    plt.plot(epochs, results['validation_0']['mlogloss'], 'b', label="Validation Loss (Log Loss)")
-    plt.legend(loc='upper left')
-    plt.title("LOSS GRAPH (XGBoost)")
-    plt.xlabel("Iteration")
-    plt.ylabel("Log Loss")
-    plt.show()
-    
+    macro_pr_auc = np.mean(pr_aucs)
+    print(f"Macro PR-AUC: {macro_pr_auc:.4f}")
+
 # Kiểm tra phân bố nhãn
 print("Phân bố nhãn (tỷ lệ):", pd.Series(Y3).value_counts(normalize=True))
 
-XGB = XGBClassifier(
-    objective='multi:softmax',  # Multi-class classification
-    num_class=4,                # Number of classes
-    learning_rate=0.1,          # Initial learning rate
-    n_estimators=100,           # Number of trees
-    max_depth=6,                # Maximum depth of trees
-    scale_pos_weight=[0.9, 1.0, 1.1, 1.05],  # Adjusted for class imbalance (based on proportions)
-    random_state=42
+RF = RandomForestClassifier(
+  n_estimators=100,
+  max_depth=15,
+  min_samples_split=5,
+  min_samples_leaf=1,
+  max_features='sqrt',
+  bootstrap=True,
+  n_jobs=-1,
+  random_state=42
 )
 
 Phân bố nhãn (tỷ lệ): 0    0.274521
 1    0.245943
 3    0.243506
 2    0.236030
-Name: proportion, dtype: float64
 
 # Create DMatrix for XGBoost
 dtrain = xgb.DMatrix(X_train3, label=Y_train3)
@@ -163,8 +155,7 @@ XGB.fit(
     callbacks=[xgb.callback.EvaluationMonitor(period=1)]
 )
 
-results = XGB.evals_result()
-eval_graph_XGB(results, X_test3, Y_test3)
+RF.fit(X_train3, Y_train3)
 
 label_names = ['benign', 'defacement', 'malware', 'phishing']
-conf_matrix_multi_label_XGB(X_test3, Y_test3, XGB, label_names)
+conf_matrix_multi_label_RF(X_test3, Y_test3, RF, label_names)
