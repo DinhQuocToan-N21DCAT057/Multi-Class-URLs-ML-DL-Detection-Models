@@ -14,18 +14,20 @@ from nltk.stem import PorterStemmer
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 class URL_PREDICTOR(object):
-    def __init__(self, url):
+    def __init__(self, url, dataset="dataset_1"):
         self.url = url
-        self.CNN_NUMERICAL_MODEL_PATH = os.path.join(BASE_DIR, "models", "CNN_MODEL_ON_NUMERICAL_FEATURES.keras")
-        self.CNN_NON_NUMERICAL_MODEL_PATH = os.path.join(BASE_DIR, "models", "CNN_MODEL_ON_NON_NUMERICAL_FEATURES.keras")
-        self.XGB_NUMERICAL_MODEL_PATH = os.path.join(BASE_DIR, "models", "XGB_MODEL_ON_NUMERICAL_FEATURES.pkl")
-        self.XGB_NON_NUMERICAL_MODEL_PATH = os.path.join(BASE_DIR, "models", "XGB_MODEL_ON_NON_NUMERICAL_FEATURES.pkl")
-        self.RF_NUMERICAL_MODEL_PATH = os.path.join(BASE_DIR, "models", "RF_MODEL_ON_NUMERICAL_FEATURES.pkl")
-        self.RF_NON_NUMERICAL_MODEL_PATH = os.path.join(BASE_DIR, "models", "RF_MODEL_ON_NON_NUMERICAL_FEATURES.pkl")
-        self.SCALER_PATH = os.path.join(BASE_DIR, "scaler.pkl")
-        self.CNN_VECTORIZER_PATH = os.path.join(BASE_DIR, "tfidf_vectorizer_CNN.pkl")
-        self.XGB_RF_VECTORIZER_PATH = os.path.join(BASE_DIR, "tfidf_vectorizer_XGB_RF.pkl")
+        self.dataset = dataset
+        self.CNN_NUMERICAL_MODEL_PATH = os.path.join(BASE_DIR, "models", f"{self.dataset}", "CNN_MODEL_ON_NUMERICAL_FEATURES.keras")
+        self.CNN_NON_NUMERICAL_MODEL_PATH = os.path.join(BASE_DIR, "models", f"{self.dataset}", "CNN_MODEL_ON_NON_NUMERICAL_FEATURES.keras")
+        self.XGB_NUMERICAL_MODEL_PATH = os.path.join(BASE_DIR, "models", f"{self.dataset}", "XGB_MODEL_ON_NUMERICAL_FEATURES.pkl")
+        self.XGB_NON_NUMERICAL_MODEL_PATH = os.path.join(BASE_DIR, "models", f"{self.dataset}", "XGB_MODEL_ON_NON_NUMERICAL_FEATURES.pkl")
+        self.RF_NUMERICAL_MODEL_PATH = os.path.join(BASE_DIR, "models", f"{self.dataset}", "RF_MODEL_ON_NUMERICAL_FEATURES.pkl")
+        self.RF_NON_NUMERICAL_MODEL_PATH = os.path.join(BASE_DIR, "models", f"{self.dataset}", "RF_MODEL_ON_NON_NUMERICAL_FEATURES.pkl")
+        self.SCALER_PATH = os.path.join(BASE_DIR, "models", f"{self.dataset}", "scaler.pkl")
+        self.CNN_VECTORIZER_PATH = os.path.join(BASE_DIR, "models", f"{self.dataset}", "tfidf_vectorizer_CNN.pkl")
+        self.XGB_RF_VECTORIZER_PATH = os.path.join(BASE_DIR, "models", f"{self.dataset}", "tfidf_vectorizer_XGB_RF.pkl")
         self.df = self.extract_url_features_to_df()
+        self.df.to_csv(f"test.csv", index=False)
         self.y = self.df['label'] if 'label' in self.df.columns else None
         self.ps = PorterStemmer()
         self.corpus = []

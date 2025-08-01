@@ -214,6 +214,7 @@ cython_debug/
 /Colab_Script_Old.txt
 /Colab_Script_New.txt
 /Colab_Script_New1.txt
+/multi-labels-urls-firebase-db-firebase-adminsdk-fbsvc-87b7743762.json
 
 /models/CNN_MODEL_WITH_MULTI_LABELS_79_FEATURES.h5
 /models/CNN_MODEL_WITH_MULTI_LABELS_21_FEATURES.keras
