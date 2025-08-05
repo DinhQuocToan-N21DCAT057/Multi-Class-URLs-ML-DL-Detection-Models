@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+
+{% block title %}Dự đoán nhanh - URL Multi-Labels Detection{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="glass-card">
+                <div class="text-center mb-4">
+                    <i class="fas fa-search prediction-icon"></i>
+                    <h2 class="fw-bold mb-3">Dự đoán nhanh URL</h2>
+                    <p class="text-muted">Kiểm tra tính bảo mật của URL với mô hình tốt nhất</p>
+                </div>
+
+                <!-- Prediction Form -->
+                <form id="quickPredictionForm">
+                    <div class="row mb-4">
+                        <div class="col-md-8">
+                            <label for="urlInput" class="form-label">URL cần kiểm tra</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-link"></i>
+                                </span>
+                                <input type="url" 
+                                       class="form-control" 
+                                       id="urlInput" 
+                                       placeholder="https://example.com"
+                                       required>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="modelSelect" class="form-label">Mô hình</label>
+                            <select class="form-select" id="modelSelect">
+                                <option value="cnn">CNN (Khuyến nghị)</option>
+                                <option value="xgb">XGBoost</option>
+                                <option value="rf">Random Forest</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label for="thresholdRange" class="form-label">
+                                Ngưỡng tin cậy: <span id="thresholdValue">50%</span>
+                            </label>
+                            <input type="range" 
+                                   class="form-range" 
+                                   id="thresholdRange" 
+                                   min="10" 
+                                   max="90" 
+                                   value="50">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="datasetSelect" class="form-label">Dataset</label>
+                            <select class="form-select" id="datasetSelect">
+                                <option value="dataset_1">Dataset 1</option>
+                                <option value="dataset_2">Dataset 2</option>
+                                <option value="dataset_3">Dataset 3</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="text-center">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-search me-2"></i>
+                            Kiểm tra URL
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Loading -->
+                <div id="loadingSection" class="loading-section" style="display: none;">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Đang tải...</span>
+                        </div>
+                        <p class="mt-3 text-muted">Đang phân tích URL...</p>
+                    </div>
+                </div>
+
+                <!-- Results -->
+                <div id="resultsSection" style="display: none;">
+                    <hr class="my-4">
+                    <h4 class="mb-3">
+                        <i class="fas fa-chart-bar me-2"></i>
+                        Kết quả phân tích
+                    </h4>
+                    
+                    <!-- Overall Assessment -->
+                    <div id="overallAssessment" class="alert mb-4"></div>
+                    
+                    <!-- Detailed Results -->
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="prediction-details">
+                                <h6 class="mb-3">Chi tiết dự đoán</h6>
+                                <div id="predictionBars"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="execution-info">
+                                <h6 class="mb-3">Thông tin thực thi</h6>
+                                <div class="info-item">
+                                    <small class="text-muted">Mô hình:</small>
+                                    <div id="usedModel"></div>
+                                </div>
+                                <div class="info-item">
+                                    <small class="text-muted">Thời gian xử lý:</small>
+                                    <div id="executionTime"></div>
+                                </div>
+                                <div class="info-item">
+                                    <small class="text-muted">Dataset:</small>
+                                    <div id="usedDataset"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('quickPredictionForm');
+    const thresholdRange = document.getElementById('thresholdRange');
+    const thresholdValue = document.getElementById('thresholdValue');
+    
+    // Update threshold display
+    thresholdRange.addEventListener('input', function() {
+        thresholdValue.textContent = this.value + '%';
+    });
+    
+    // Form submission
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        performQuickPrediction();
+    });
+});
+
+function performQuickPrediction() {
+    const url = document.getElementById('urlInput').value.trim();
+    const model = document.getElementById('modelSelect').value;
+    const threshold = document.getElementById('thresholdRange').value / 100;
+    const dataset = document.getElementById('datasetSelect').value;
+    
+    if (!url) {
+        showAlert('Vui lòng nhập URL cần kiểm tra!', 'warning');
+        return;
+    }
+    
+    // Show loading
+    document.getElementById('loadingSection').style.display = 'block';
+    document.getElementById('resultsSection').style.display = 'none';
+    
+    // Make prediction request
+    fetch('/predict', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            url: url,
+            model_type: model,
+            threshold: threshold,
+            dataset: dataset,
+            numerical: true
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('loadingSection').style.display = 'none';
+        if (data.error) {
+            showAlert(data.error, 'danger');
+        } else {
+            displayResults(data);
+        }
+    })
+    .catch(error => {
+        document.getElementById('loadingSection').style.display = 'none';
+        showAlert('Có lỗi xảy ra khi phân tích URL!', 'danger');
+        console.error('Error:', error);
+    });
+}
+
+function displayResults(data) {
+    const resultsSection = document.getElementById('resultsSection');
+    const overallAssessment = document.getElementById('overallAssessment');
+    const predictionBars = document.getElementById('predictionBars');
+    
+    // Calculate overall safety
+    const predictions = data.predictions;
+    const isSafe = predictions[0] > 0.5 && Math.max(...predictions.slice(1)) <= 0.5;
+    
+    // Update overall assessment
+    overallAssessment.className = `alert ${isSafe ? 'alert-success' : 'alert-danger'}`;
+    overallAssessment.innerHTML = `
+        <div class="d-flex align-items-center">
+            <i class="fas ${isSafe ? 'fa-shield-alt' : 'fa-exclamation-triangle'} me-3" style="font-size: 2rem;"></i>
+            <div>
+                <h5 class="mb-1">${isSafe ? 'URL An toàn' : 'URL Nguy hiểm'}</h5>
+                <p class="mb-0">
+                    ${isSafe ? 
+                        'URL này có khả năng an toàn cao và không chứa mối đe dọa.' : 
+                        'URL này có thể chứa mối đe dọa bảo mật, hãy thận trọng khi truy cập.'
+                    }
+                </p>
+            </div>
+        </div>
+    `;
+    
+    // Create prediction bars
+    const labels = data.label_names;
+    const colors = ['#28a745', '#ffc107', '#dc3545', '#fd7e14'];
+    
+    predictionBars.innerHTML = '';
+    predictions.forEach((prob, index) => {
+        const percentage = (prob * 100).toFixed(1);
+        const isPositive = prob > (data.threshold || 0.5);
+        
+        predictionBars.innerHTML += `
+            <div class="prediction-bar-item mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="fw-semibold">${labels[index]}</span>
+                    <span class="badge ${isPositive ? 'bg-danger' : 'bg-secondary'}">${percentage}%</span>
+                </div>
+                <div class="progress">
+                    <div class="progress-bar" 
+                         style="width: ${percentage}%; background-color: ${colors[index]};"
+                         role="progressbar"></div>
+                </div>
+            </div>
+        `;
+    });
+    
+    // Update execution info
+    document.getElementById('usedModel').textContent = data.model_type.toUpperCase();
+    document.getElementById('executionTime').textContent = (data.execution_time || 0).toFixed(2) + 's';
+    document.getElementById('usedDataset').textContent = data.dataset;
+    
+    // Show results
+    resultsSection.style.display = 'block';
+}
+
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const container = document.querySelector('.glass-card');
+    container.insertBefore(alertDiv, container.firstChild);
+    
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 5000);
+}
+</script>
+{% endblock %}

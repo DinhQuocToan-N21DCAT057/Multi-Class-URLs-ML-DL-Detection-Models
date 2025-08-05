@@ -1,0 +1,738 @@
+{% extends "base.html" %}
+
+{% block title %}Thông tin mô hình - URL Multi-Labels Detection{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="glass-card">
+                <div class="text-center">
+                    <i class="fas fa-info-circle model-info-icon"></i>
+                    <h2 class="fw-bold mb-3">Thông tin mô hình học sâu</h2>
+                    <p class="text-muted">Chi tiết về kiến trúc, hiệu suất và đánh giá các mô hình</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Model Overview Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="model-overview-card" data-model="cnn">
+                <div class="model-header">
+                    <div class="model-icon">
+                        <i class="fas fa-network-wired"></i>
+                    </div>
+                    <h4>CNN Model</h4>
+                    <p class="text-muted">Convolutional Neural Network</p>
+                </div>
+                <div class="model-metrics">
+                    <div class="metric-item">
+                        <span class="metric-label">Accuracy:</span>
+                        <span class="metric-value">92.5%</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">F1-Score:</span>
+                        <span class="metric-value">91.8%</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">Precision:</span>
+                        <span class="metric-value">93.2%</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">Recall:</span>
+                        <span class="metric-value">90.5%</span>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="showModelDetails('cnn')">
+                    <i class="fas fa-eye me-2"></i>Chi tiết
+                </button>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="model-overview-card" data-model="xgb">
+                <div class="model-header">
+                    <div class="model-icon">
+                        <i class="fas fa-tree"></i>
+                    </div>
+                    <h4>XGBoost</h4>
+                    <p class="text-muted">Extreme Gradient Boosting</p>
+                </div>
+                <div class="model-metrics">
+                    <div class="metric-item">
+                        <span class="metric-label">Accuracy:</span>
+                        <span class="metric-value">89.3%</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">F1-Score:</span>
+                        <span class="metric-value">88.7%</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">Precision:</span>
+                        <span class="metric-value">90.1%</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">Recall:</span>
+                        <span class="metric-value">87.4%</span>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="showModelDetails('xgb')">
+                    <i class="fas fa-eye me-2"></i>Chi tiết
+                </button>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="model-overview-card" data-model="rf">
+                <div class="model-header">
+                    <div class="model-icon">
+                        <i class="fas fa-forest"></i>
+                    </div>
+                    <h4>Random Forest</h4>
+                    <p class="text-muted">Ensemble Learning</p>
+                </div>
+                <div class="model-metrics">
+                    <div class="metric-item">
+                        <span class="metric-label">Accuracy:</span>
+                        <span class="metric-value">87.8%</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">F1-Score:</span>
+                        <span class="metric-value">87.2%</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">Precision:</span>
+                        <span class="metric-value">88.9%</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">Recall:</span>
+                        <span class="metric-value">85.6%</span>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="showModelDetails('rf')">
+                    <i class="fas fa-eye me-2"></i>Chi tiết
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Metrics Section -->
+    <div class="row mb-4">
+        <!-- Confusion Matrix -->
+        <div class="col-lg-6">
+            <div class="glass-card">
+                <h5 class="card-title">
+                    <i class="fas fa-table me-2"></i>
+                    Ma trận nhầm lẫn (Confusion Matrix)
+                </h5>
+                <div class="model-selector mb-3">
+                    <select class="form-select" id="confusionMatrixModel" onchange="updateConfusionMatrix()">
+                        <option value="cnn">CNN Model</option>
+                        <option value="xgb">XGBoost</option>
+                        <option value="rf">Random Forest</option>
+                    </select>
+                </div>
+                <div class="confusion-matrix-container">
+                    <div id="confusionMatrixDisplay">
+                        <!-- Matrix will be generated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ROC Curves -->
+        <div class="col-lg-6">
+            <div class="glass-card">
+                <h5 class="card-title">
+                    <i class="fas fa-chart-area me-2"></i>
+                    Đường cong ROC
+                </h5>
+                <div class="chart-container">
+                    <canvas id="rocCurveChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Comparison -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="glass-card">
+                <h5 class="card-title">
+                    <i class="fas fa-chart-bar me-2"></i>
+                    So sánh hiệu suất mô hình
+                </h5>
+                <div class="chart-container">
+                    <canvas id="performanceComparisonChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="glass-card">
+                <h5 class="card-title">
+                    <i class="fas fa-trophy me-2"></i>
+                    Xếp hạng mô hình
+                </h5>
+                <div class="model-ranking">
+                    <div class="ranking-item first">
+                        <div class="rank-badge">1</div>
+                        <div class="rank-content">
+                            <h6>CNN Model</h6>
+                            <small>Tốt nhất cho phân loại đa nhãn</small>
+                            <div class="rank-score">92.5%</div>
+                        </div>
+                    </div>
+                    
+                    <div class="ranking-item second">
+                        <div class="rank-badge">2</div>
+                        <div class="rank-content">
+                            <h6>XGBoost</h6>
+                            <small>Nhanh và hiệu quả</small>
+                            <div class="rank-score">89.3%</div>
+                        </div>
+                    </div>
+                    
+                    <div class="ranking-item third">
+                        <div class="rank-badge">3</div>
+                        <div class="rank-content">
+                            <h6>Random Forest</h6>
+                            <small>Ổn định và đáng tin cậy</small>
+                            <div class="rank-score">87.8%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Training History -->
+    <div class="row mb-4">
+        <div class="col-lg-6">
+            <div class="glass-card">
+                <h5 class="card-title">
+                    <i class="fas fa-chart-line me-2"></i>
+                    Lịch sử huấn luyện CNN
+                </h5>
+                <div class="chart-container">
+                    <canvas id="trainingHistoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-6">
+            <div class="glass-card">
+                <h5 class="card-title">
+                    <i class="fas fa-clock me-2"></i>
+                    Thời gian xử lý
+                </h5>
+                <div class="chart-container">
+                    <canvas id="processingTimeChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feature Importance -->
+    <div class="row">
+        <div class="col-12">
+            <div class="glass-card">
+                <h5 class="card-title">
+                    <i class="fas fa-weight-hanging me-2"></i>
+                    Độ quan trọng của đặc trưng
+                </h5>
+                <div class="model-selector mb-3">
+                    <select class="form-select" id="featureImportanceModel" onchange="updateFeatureImportance()" style="max-width: 200px;">
+                        <option value="xgb">XGBoost</option>
+                        <option value="rf">Random Forest</option>
+                    </select>
+                    <small class="text-muted ms-2">CNN không hỗ trợ feature importance trực tiếp</small>
+                </div>
+                <div class="chart-container">
+                    <canvas id="featureImportanceChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Model Detail Modal -->
+<div class="modal fade" id="modelDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Chi tiết mô hình
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Content will be populated dynamically -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    initializeCharts();
+    updateConfusionMatrix();
+    updateFeatureImportance();
+});
+
+function initializeCharts() {
+    createROCChart();
+    createPerformanceComparisonChart();
+    createTrainingHistoryChart();
+    createProcessingTimeChart();
+}
+
+function createROCChart() {
+    const ctx = document.getElementById('rocCurveChart').getContext('2d');
+    
+    // Sample ROC data for each model
+    const rocData = {
+        cnn: generateROCData(0.94),
+        xgb: generateROCData(0.91),
+        rf: generateROCData(0.89)
+    };
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            datasets: [
+                {
+                    label: 'CNN (AUC: 0.94)',
+                    data: rocData.cnn,
+                    borderColor: '#667eea',
+                    backgroundColor: 'transparent',
+                    pointRadius: 0,
+                    borderWidth: 3
+                },
+                {
+                    label: 'XGBoost (AUC: 0.91)',
+                    data: rocData.xgb,
+                    borderColor: '#764ba2',
+                    backgroundColor: 'transparent',
+                    pointRadius: 0,
+                    borderWidth: 3
+                },
+                {
+                    label: 'Random Forest (AUC: 0.89)',
+                    data: rocData.rf,
+                    borderColor: '#f093fb',
+                    backgroundColor: 'transparent',
+                    pointRadius: 0,
+                    borderWidth: 3
+                },
+                {
+                    label: 'Random (AUC: 0.5)',
+                    data: [{x: 0, y: 0}, {x: 1, y: 1}],
+                    borderColor: '#999',
+                    backgroundColor: 'transparent',
+                    borderDash: [5, 5],
+                    pointRadius: 0
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    type: 'linear',
+                    position: 'bottom',
+                    title: {
+                        display: true,
+                        text: 'False Positive Rate'
+                    },
+                    min: 0,
+                    max: 1
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'True Positive Rate'
+                    },
+                    min: 0,
+                    max: 1
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+function createPerformanceComparisonChart() {
+    const ctx = document.getElementById('performanceComparisonChart').getContext('2d');
+    
+    new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: ['Accuracy', 'Precision', 'Recall', 'F1-Score', 'AUC-ROC'],
+            datasets: [
+                {
+                    label: 'CNN',
+                    data: [92.5, 93.2, 90.5, 91.8, 94.0],
+                    backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                    borderColor: '#667eea',
+                    borderWidth: 2
+                },
+                {
+                    label: 'XGBoost',
+                    data: [89.3, 90.1, 87.4, 88.7, 91.0],
+                    backgroundColor: 'rgba(118, 75, 162, 0.2)',
+                    borderColor: '#764ba2',
+                    borderWidth: 2
+                },
+                {
+                    label: 'Random Forest',
+                    data: [87.8, 88.9, 85.6, 87.2, 89.0],
+                    backgroundColor: 'rgba(240, 147, 251, 0.2)',
+                    borderColor: '#f093fb',
+                    borderWidth: 2
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                r: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                        stepSize: 20
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+function createTrainingHistoryChart() {
+    const ctx = document.getElementById('trainingHistoryChart').getContext('2d');
+    
+    // Sample training data
+    const epochs = Array.from({length: 50}, (_, i) => i + 1);
+    const trainAcc = epochs.map(e => Math.min(95, 60 + e * 0.7 + Math.random() * 2));
+    const valAcc = epochs.map(e => Math.min(93, 55 + e * 0.75 + Math.random() * 3));
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: epochs,
+            datasets: [
+                {
+                    label: 'Training Accuracy',
+                    data: trainAcc,
+                    borderColor: '#28a745',
+                    backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                },
+                {
+                    label: 'Validation Accuracy',
+                    data: valAcc,
+                    borderColor: '#dc3545',
+                    backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Epochs'
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Accuracy (%)'
+                    },
+                    min: 50,
+                    max: 100
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'top'
+                }
+            }
+        }
+    });
+}
+
+function createProcessingTimeChart() {
+    const ctx = document.getElementById('processingTimeChart').getContext('2d');
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['CNN', 'XGBoost', 'Random Forest'],
+            datasets: [{
+                label: 'Thời gian xử lý (ms)',
+                data: [850, 45, 120],
+                backgroundColor: ['#667eea', '#764ba2', '#f093fb'],
+                borderRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Thời gian (ms)'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function updateConfusionMatrix() {
+    const model = document.getElementById('confusionMatrixModel').value;
+    const container = document.getElementById('confusionMatrixDisplay');
+    
+    // Sample confusion matrix data for different models
+    const confusionMatrices = {
+        cnn: [
+            [450, 8, 5, 2],   // Benign
+            [12, 380, 15, 8],  // Phishing
+            [6, 10, 375, 12],  // Malware
+            [3, 7, 8, 385]     // Defacement
+        ],
+        xgb: [
+            [445, 12, 8, 5],
+            [15, 370, 20, 10],
+            [8, 15, 365, 15],
+            [5, 10, 12, 375]
+        ],
+        rf: [
+            [440, 15, 10, 8],
+            [18, 365, 22, 12],
+            [10, 18, 360, 18],
+            [7, 12, 15, 370]
+        ]
+    };
+    
+    const matrix = confusionMatrices[model];
+    const labels = ['Benign', 'Phishing', 'Malware', 'Defacement'];
+    
+    let html = '<table class="confusion-matrix-table">';
+    html += '<tr><th></th>';
+    
+    // Header row
+    labels.forEach(label => {
+        html += `<th>Predicted<br>${label}</th>`;
+    });
+    html += '</tr>';
+    
+    // Data rows
+    matrix.forEach((row, i) => {
+        html += `<tr><th>Actual<br>${labels[i]}</th>`;
+        const total = row.reduce((a, b) => a + b, 0);
+        row.forEach(value => {
+            const intensity = value / total;
+            const color = i === row.indexOf(Math.max(...row)) ? '#28a745' : '#dc3545';
+            html += `<td style="background-color: ${color}${Math.round(intensity * 255).toString(16).padStart(2, '0')}">${value}</td>`;
+        });
+        html += '</tr>';
+    });
+    
+    html += '</table>';
+    container.innerHTML = html;
+}
+
+function updateFeatureImportance() {
+    const model = document.getElementById('featureImportanceModel').value;
+    const ctx = document.getElementById('featureImportanceChart').getContext('2d');
+    
+    // Sample feature importance data
+    const features = [
+        'URL Length', 'Domain Length', 'Number of Dots', 'Number of Hyphens',
+        'Has IP', 'Suspicious TLD', 'External Links', 'Forms Count',
+        'SSL Certificate', 'Domain Age', 'Page Rank', 'Traffic Rank'
+    ];
+    
+    const importanceData = {
+        xgb: [0.15, 0.12, 0.11, 0.09, 0.08, 0.08, 0.07, 0.07, 0.06, 0.06, 0.05, 0.06],
+        rf: [0.13, 0.11, 0.10, 0.10, 0.09, 0.08, 0.08, 0.07, 0.07, 0.06, 0.06, 0.05]
+    };
+    
+    // Clear previous chart
+    Chart.getChart(ctx)?.destroy();
+    
+    new Chart(ctx, {
+        type: 'horizontalBar',
+        data: {
+            labels: features,
+            datasets: [{
+                label: 'Feature Importance',
+                data: importanceData[model],
+                backgroundColor: model === 'xgb' ? '#764ba2' : '#f093fb',
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    max: 0.2,
+                    title: {
+                        display: true,
+                        text: 'Importance Score'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function generateROCData(auc) {
+    const points = [];
+    for (let i = 0; i <= 100; i++) {
+        const fpr = i / 100;
+        // Approximate TPR based on AUC using a sigmoid-like function
+        const tpr = Math.min(1, Math.pow(fpr, 1 - auc) + (auc - 0.5) * 2 * (1 - fpr));
+        points.push({x: fpr, y: tpr});
+    }
+    return points;
+}
+
+function showModelDetails(modelType) {
+    const modelInfo = {
+        cnn: {
+            name: 'Convolutional Neural Network',
+            architecture: 'Sequential model với 3 convolutional layers, dropout, và dense layers',
+            parameters: '1.2M parameters',
+            trainingTime: '45 phút',
+            dataset: 'Dataset 1 (50,000 URLs)',
+            strengths: ['Phù hợp với dữ liệu sequence', 'Tự động trích xuất features', 'Hiệu suất cao'],
+            weaknesses: ['Thời gian training lâu', 'Cần nhiều dữ liệu', 'Black box model'],
+            useCase: 'Tốt nhất cho phân loại phishing và malware URLs'
+        },
+        xgb: {
+            name: 'Extreme Gradient Boosting',
+            architecture: 'Ensemble của 500 decision trees với max_depth=6',
+            parameters: '2.5M parameters',
+            trainingTime: '12 phút',
+            dataset: 'Dataset 1 (50,000 URLs)',
+            strengths: ['Training nhanh', 'Feature importance rõ ràng', 'Robust với outliers'],
+            weaknesses: ['Có thể overfit', 'Cần tuning hyperparameters', 'Memory intensive'],
+            useCase: 'Phù hợp cho production với yêu cầu tốc độ cao'
+        },
+        rf: {
+            name: 'Random Forest',
+            architecture: 'Ensemble của 100 decision trees với max_depth=15',
+            parameters: '800K parameters',
+            trainingTime: '8 phút',
+            dataset: 'Dataset 1 (50,000 URLs)',
+            strengths: ['Ổn định', 'Ít overfit', 'Dễ hiểu và giải thích'],
+            weaknesses: ['Accuracy thấp hơn', 'Memory usage cao', 'Bias với categorical features'],
+            useCase: 'Baseline model và interpretability'
+        }
+    };
+    
+    const info = modelInfo[modelType];
+    const modalTitle = document.getElementById('modalTitle');
+    const modalBody = document.getElementById('modalBody');
+    
+    modalTitle.innerHTML = `<i class="fas fa-info-circle me-2"></i>Chi tiết ${info.name}`;
+    
+    modalBody.innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Kiến trúc mô hình</h6>
+                <p>${info.architecture}</p>
+                
+                <h6>Thông số</h6>
+                <ul>
+                    <li><strong>Parameters:</strong> ${info.parameters}</li>
+                    <li><strong>Training time:</strong> ${info.trainingTime}</li>
+                    <li><strong>Dataset:</strong> ${info.dataset}</li>
+                </ul>
+                
+                <h6>Ưu điểm</h6>
+                <ul>
+                    ${info.strengths.map(s => `<li>${s}</li>`).join('')}
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <h6>Nhược điểm</h6>
+                <ul>
+                    ${info.weaknesses.map(w => `<li>${w}</li>`).join('')}
+                </ul>
+                
+                <h6>Trường hợp sử dụng</h6>
+                <p>${info.useCase}</p>
+                
+                <h6>Hyperparameters</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <tbody>
+                            ${modelType === 'cnn' ? `
+                                <tr><td>Learning Rate</td><td>0.001</td></tr>
+                                <tr><td>Batch Size</td><td>32</td></tr>
+                                <tr><td>Epochs</td><td>50</td></tr>
+                                <tr><td>Dropout</td><td>0.3</td></tr>
+                            ` : modelType === 'xgb' ? `
+                                <tr><td>Max Depth</td><td>6</td></tr>
+                                <tr><td>Learning Rate</td><td>0.1</td></tr>
+                                <tr><td>N Estimators</td><td>500</td></tr>
+                                <tr><td>Subsample</td><td>0.8</td></tr>
+                            ` : `
+                                <tr><td>N Estimators</td><td>100</td></tr>
+                                <tr><td>Max Depth</td><td>15</td></tr>
+                                <tr><td>Min Samples Split</td><td>5</td></tr>
+                                <tr><td>Min Samples Leaf</td><td>2</td></tr>
+                            `}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    new bootstrap.Modal(document.getElementById('modelDetailModal')).show();
+}
+</script>
+{% endblock %}

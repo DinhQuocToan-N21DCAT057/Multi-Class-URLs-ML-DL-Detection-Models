@@ -1,7 +1,7 @@
 <!-- Navigation Bar -->
 <nav class="navbar navbar-expand-lg navbar-light fixed-top">
     <div class="container">
-        <a class="navbar-brand" href="{{ url_for('dashboard') }}">
+        <a class="navbar-brand" href="{{ url_for('main.dashboard') }}">
             <i class="fas fa-shield-alt me-2"></i>
             URL Security Scanner
         </a>
@@ -13,25 +13,25 @@
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item">
-                    <a class="nav-link {{ 'active' if request.endpoint == 'dashboard' }}" href="{{ url_for('dashboard') }}">
+                    <a class="nav-link {{ 'active' if request.endpoint == 'main.dashboard' }}" href="{{ url_for('main.dashboard') }}">
                         <i class="fas fa-home me-1"></i>
                         Trang chủ
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {{ 'active' if request.endpoint == 'analysis' }}" href="{{ url_for('analysis') }}">
+                    <a class="nav-link {{ 'active' if request.endpoint == 'main.analysis' }}" href="{{ url_for('main.analysis') }}">
                         <i class="fas fa-chart-bar me-1"></i>
                         Phân tích
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {{ 'active' if request.endpoint == 'history' }}" href="{{ url_for('history') }}">
+                    <a class="nav-link {{ 'active' if request.endpoint == 'main.history' }}" href="{{ url_for('main.history') }}">
                         <i class="fas fa-history me-1"></i>
                         Lịch sử
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {{ 'active' if request.endpoint == 'settings' }}" href="{{ url_for('settings') }}">
+                    <a class="nav-link {{ 'active' if request.endpoint == 'main.settings' }}" href="{{ url_for('main.settings') }}">
                         <i class="fas fa-cog me-1"></i>
                         Cài đặt
                     </a>
