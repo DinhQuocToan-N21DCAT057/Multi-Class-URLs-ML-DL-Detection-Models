@@ -4,7 +4,7 @@ import pandas as pd
 import argparse
 import sys
 
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "."))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='URL Multi-Labels Dataset Merger')
@@ -34,11 +34,3 @@ if __name__ == "__main__":
     merged_df = pd.concat(df_list, ignore_index=True)
     merged_df.to_csv(args.o, index=False)
     print(f"Merged {len(all_files)} files into {args.o}")
-    
-
-            
-        
-        
-
-
-

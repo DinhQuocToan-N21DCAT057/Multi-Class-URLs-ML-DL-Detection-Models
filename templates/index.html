@@ -1,338 +1,204 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>URL Multi-Labels Detection</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        .navbar {
-            background: rgba(255, 255, 255, 0.95) !important;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
-        }
-        
-        .navbar-brand {
-            font-weight: bold;
-            color: #667eea !important;
-        }
-        
-        .nav-link {
-            color: #555 !important;
-            font-weight: 500;
-            transition: all 0.3s ease;
-        }
-        
-        .nav-link:hover {
-            color: #667eea !important;
-            transform: translateY(-2px);
-        }
-        
-        .nav-link.active {
-            color: #667eea !important;
-            border-bottom: 2px solid #667eea;
-        }
-        
-        .main-container {
-            padding-top: 100px;
-            padding-bottom: 50px;
-        }
-        
-        .prediction-card {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 40px;
-            margin-bottom: 30px;
-        }
-        
-        .form-control {
-            border-radius: 15px;
-            border: 2px solid #e9ecef;
-            padding: 15px 20px;
-            font-size: 16px;
-            transition: all 0.3s ease;
-        }
-        
-        .form-control:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-        }
-        
-        .btn-predict {
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            border: none;
-            border-radius: 15px;
-            padding: 15px 30px;
-            font-weight: 600;
-            color: white;
-            transition: all 0.3s ease;
-        }
-        
-        .btn-predict:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
-            color: white;
-        }
-        
-        .result-card {
-            background: rgba(255, 255, 255, 0.9);
-            border-radius: 15px;
-            padding: 25px;
-            margin-top: 20px;
-            border-left: 5px solid #667eea;
-        }
-        
-        .loading {
-            display: none;
-            text-align: center;
-            padding: 20px;
-        }
-        
-        .spinner-border {
-            color: #667eea;
-        }
-        
-        .alert {
-            border-radius: 15px;
-            border: none;
-        }
-        
-        .alert-success {
-            background: linear-gradient(45deg, #28a745, #20c997);
-            color: white;
-        }
-        
-        .alert-danger {
-            background: linear-gradient(45deg, #dc3545, #fd7e14);
-            color: white;
-        }
-        
-        .feature-icon {
-            font-size: 2rem;
-            color: #667eea;
-            margin-bottom: 15px;
-        }
-        
-        .stats-card {
-            background: rgba(255, 255, 255, 0.9);
-            border-radius: 15px;
-            padding: 25px;
-            text-align: center;
-            margin-bottom: 20px;
-            transition: transform 0.3s ease;
-        }
-        
-        .stats-card:hover {
-            transform: translateY(-5px);
-        }
-        
-        .stats-number {
-            font-size: 2.5rem;
-            font-weight: bold;
-            color: #667eea;
-        }
-        
-        .stats-label {
-            color: #666;
-            font-weight: 500;
-        }
-    </style>
-</head>
-<body>
-    <!-- Include Navigation -->
-    {% include 'navigation.html' %}
+{% extends "base.html" %}
 
-    <!-- Main Content -->
-    <div class="container main-container">
-        <!-- Quick Prediction Section -->
-        <div class="row justify-content-center">
-            <div class="col-lg-8">
-                <div class="prediction-card">
-                    <div class="text-center mb-4">
-                        <i class="fas fa-search feature-icon"></i>
-                        <h2 class="mb-3">Dự đoán nhanh URL</h2>
-                        <p class="text-muted">Nhập URL để kiểm tra tính bảo mật và phân loại</p>
-                    </div>
-                    
-                    <form id="predictionForm" method="POST" action="{{ url_for('predict_url') }}">
-                        <div class="mb-4">
-                            <div class="input-group">
-                                <span class="input-group-text">
-                                    <i class="fas fa-link"></i>
-                                </span>
-                                <input type="url" 
-                                       class="form-control" 
-                                       id="urlInput" 
-                                       name="url"
-                                       placeholder="Nhập URL cần kiểm tra (ví dụ: https://example.com)"
-                                       required>
-                                <button type="submit" class="btn btn-predict">
-                                    <i class="fas fa-search me-2"></i>
-                                    Kiểm tra
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                    
-                    <!-- Loading Spinner -->
-                    <div class="loading" id="loading">
-                        <div class="spinner-border" role="status">
-                            <span class="visually-hidden">Đang tải...</span>
-                        </div>
-                        <p class="mt-3 text-muted">Đang phân tích URL...</p>
-                    </div>
-                    
-                    <!-- Results -->
-                    <div id="results" style="display: none;">
-                        <div class="result-card">
-                            <h5 class="mb-3">
-                                <i class="fas fa-info-circle me-2"></i>
-                                Kết quả phân tích
-                            </h5>
-                            <div id="resultContent"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Statistics Section -->
-        <div class="row mt-5">
-            <div class="col-md-4">
-                <div class="stats-card">
-                    <i class="fas fa-shield-check feature-icon"></i>
-                    <div class="stats-number" id="safeCount">0</div>
-                    <div class="stats-label">URL An toàn</div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="stats-card">
-                    <i class="fas fa-exclamation-triangle feature-icon"></i>
-                    <div class="stats-number" id="dangerCount">0</div>
-                    <div class="stats-label">URL Nguy hiểm</div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="stats-card">
-                    <i class="fas fa-chart-line feature-icon"></i>
-                    <div class="stats-number" id="totalCount">0</div>
-                    <div class="stats-label">Tổng số kiểm tra</div>
+{% block title %}Trang chủ - URL Multi-Labels Detection{% endblock %}
+
+{% block content %}
+<div class="container-fluid dashboard-container">
+    <div class="row">
+        <!-- Welcome Section -->
+        <div class="col-12">
+            <div class="welcome-card glass-card">
+                <div class="text-center">
+                    <i class="fas fa-shield-alt welcome-icon"></i>
+                    <h1 class="display-4 fw-bold mb-3">Hệ thống phát hiện URL độc hại</h1>
+                    <p class="lead text-muted">
+                        Sử dụng công nghệ học sâu để phân loại đa nhãn các URL độc hại một cách chính xác và nhanh chóng
+                    </p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <!-- Custom JavaScript -->
-    <script>
-        // Form submission handling
-        document.getElementById('predictionForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const url = document.getElementById('urlInput').value;
-            if (!url) {
-                showAlert('Vui lòng nhập URL cần kiểm tra!', 'danger');
-                return;
-            }
-            
-            // Show loading
-            document.getElementById('loading').style.display = 'block';
-            document.getElementById('results').style.display = 'none';
-            
-            // Make API call to backend
-            fetch('{{ url_for("predict_url") }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({url: url})
-            })
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('loading').style.display = 'none';
-                showResults(data);
-            })
-            .catch(error => {
-                document.getElementById('loading').style.display = 'none';
-                showAlert('Có lỗi xảy ra khi phân tích URL!', 'danger');
-                console.error('Error:', error);
-            });
-        });
-        
-        function showResults(data) {
-            const resultContent = document.getElementById('resultContent');
-            const statusClass = data.is_safe ? 'success' : 'danger';
-            const statusText = data.is_safe ? 'An toàn' : 'Nguy hiểm';
-            
-            resultContent.innerHTML = `
+    <div class="row">
+        <!-- Quick Actions -->
+        <div class="col-lg-8">
+            <div class="glass-card">
+                <h3 class="card-title">
+                    <i class="fas fa-bolt me-2 text-primary"></i>
+                    Thao tác nhanh
+                </h3>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <a href="{{ url_for('main.quick_prediction') }}" class="action-card">
+                            <div class="action-icon">
+                                <i class="fas fa-search"></i>
+                            </div>
+                            <div class="action-content">
+                                <h5>Dự đoán nhanh</h5>
+                                <p>Kiểm tra URL với mô hình tốt nhất</p>
+                            </div>
+                        </a>
+                    </div>
+
+                    <div class="col-md-6">
+                        <a href="{{ url_for('main.multi_model_prediction') }}" class="action-card">
+                            <div class="action-icon">
+                                <i class="fas fa-layer-group"></i>
+                            </div>
+                            <div class="action-content">
+                                <h5>So sánh mô hình</h5>
+                                <p>Kiểm tra với nhiều mô hình khác nhau</p>
+                            </div>
+                        </a>
+                    </div>
+
+                    <div class="col-md-6">
+                        <a href="{{ url_for('main.analysis_dashboard') }}" class="action-card">
+                            <div class="action-icon">
+                                <i class="fas fa-chart-bar"></i>
+                            </div>
+                            <div class="action-content">
+                                <h5>Phân tích chi tiết</h5>
+                                <p>Xem các chỉ số và biểu đồ phân tích</p>
+                            </div>
+                        </a>
+                    </div>
+
+                    <div class="col-md-6">
+                        <a href="{{ url_for('main.history') }}" class="action-card">
+                            <div class="action-icon">
+                                <i class="fas fa-history"></i>
+                            </div>
+                            <div class="action-content">
+                                <h5>Lịch sử dự đoán</h5>
+                                <p>Xem các URL đã được kiểm tra</p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics -->
+        <div class="col-lg-4">
+            <div class="glass-card">
+                <h3 class="card-title">
+                    <i class="fas fa-chart-pie me-2 text-primary"></i>
+                    Thống kê hệ thống
+                </h3>
+
+                <div class="stats-container">
+                    <div class="stat-item">
+                        <div class="stat-icon bg-success">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-number" id="safeCount">-</div>
+                            <div class="stat-label">URL An toàn</div>
+                        </div>
+                    </div>
+
+                    <div class="stat-item">
+                        <div class="stat-icon bg-danger">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-number" id="maliciousCount">-</div>
+                            <div class="stat-label">URL Độc hại</div>
+                        </div>
+                    </div>
+
+                    <div class="stat-item">
+                        <div class="stat-icon bg-primary">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-number" id="totalCount">-</div>
+                            <div class="stat-label">Tổng kiểm tra</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Model Information -->
+    <div class="row">
+        <div class="col-12">
+            <div class="glass-card">
+                <h3 class="card-title">
+                    <i class="fas fa-brain me-2 text-primary"></i>
+                    Các mô hình học sâu
+                </h3>
+
                 <div class="row">
-                    <div class="col-md-6">
-                        <h6><i class="fas fa-link me-2"></i>URL đã kiểm tra:</h6>
-                        <p class="text-break">${data.url}</p>
+                    <div class="col-md-4">
+                        <div class="model-card">
+                            <div class="model-icon">
+                                <i class="fas fa-network-wired"></i>
+                            </div>
+                            <h5>CNN Model</h5>
+                            <p>Mạng neural tích chập cho phân tích chuỗi URL và đặc trưng số</p>
+                            <div class="model-metrics">
+                                <small class="text-muted">Độ chính xác cao trong phân loại phishing</small>
+                            </div>
+                        </div>
                     </div>
-                    <div class="col-md-6">
-                        <h6><i class="fas fa-tag me-2"></i>Phân loại:</h6>
-                        <span class="badge bg-${statusClass}">${statusText}</span>
+
+                    <div class="col-md-4">
+                        <div class="model-card">
+                            <div class="model-icon">
+                                <i class="fas fa-tree"></i>
+                            </div>
+                            <h5>XGBoost</h5>
+                            <p>Thuật toán gradient boosting tối ưu cho dữ liệu có cấu trúc</p>
+                            <div class="model-metrics">
+                                <small class="text-muted">Tốc độ xử lý nhanh và hiệu quả cao</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="model-card">
+                            <div class="model-icon">
+                                <i class="fas fa-forest"></i>
+                            </div>
+                            <h5>Random Forest</h5>
+                            <p>Mô hình ensemble learning với khả năng tổng quát hóa tốt</p>
+                            <div class="model-metrics">
+                                <small class="text-muted">Ổn định và ít bị overfitting</small>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="row mt-3">
-                    <div class="col-12">
-                        <h6><i class="fas fa-chart-pie me-2"></i>Chi tiết phân tích:</h6>
-                        <ul class="list-unstyled">
-                            ${data.details.map(detail => 
-                                `<li><i class="fas fa-${detail.status === 'success' ? 'check text-success' : 'times text-danger'} me-2"></i>${detail.message}</li>`
-                            ).join('')}
-                        </ul>
-                    </div>
-                </div>
-            `;
-            
-            document.getElementById('results').style.display = 'block';
-            updateStats(data.is_safe);
-        }
-        
-        function updateStats(isSafe) {
-            if (isSafe) {
-                document.getElementById('safeCount').textContent = 
-                    parseInt(document.getElementById('safeCount').textContent) + 1;
-            } else {
-                document.getElementById('dangerCount').textContent = 
-                    parseInt(document.getElementById('dangerCount').textContent) + 1;
-            }
-            document.getElementById('totalCount').textContent = 
-                parseInt(document.getElementById('totalCount').textContent) + 1;
-        }
-        
-        function showAlert(message, type) {
-            const alertDiv = document.createElement('div');
-            alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
-            alertDiv.innerHTML = `
-                ${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            `;
-            
-            document.querySelector('.prediction-card').insertBefore(
-                alertDiv, 
-                document.getElementById('predictionForm')
-            );
-            
-            // Auto remove after 5 seconds
-            setTimeout(() => {
-                alertDiv.remove();
-            }, 5000);
-        }
-    </script>
-</body>
-</html>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Load statistics on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadSystemStats();
+});
+
+function loadSystemStats() {
+    fetch('/api/stats')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('safeCount').textContent = data.safe_count || 0;
+            document.getElementById('maliciousCount').textContent = data.malicious_count || 0;
+            document.getElementById('totalCount').textContent = data.total_predictions || 0;
+        })
+        .catch(error => {
+            console.error('Error loading stats:', error);
+            document.getElementById('safeCount').textContent = '0';
+            document.getElementById('maliciousCount').textContent = '0';
+            document.getElementById('totalCount').textContent = '0';
+        });
+}
+</script>
+{% endblock %}
