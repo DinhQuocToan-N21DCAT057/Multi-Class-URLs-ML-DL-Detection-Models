@@ -15,7 +15,7 @@ project_root = os.path.dirname(current_dir)
 template_dir = os.path.join(project_root, 'templates')
 
 # Initialize Firebase Admin SDK with your service account credentials
-cred = credentials.Certificate(os.path.join(project_root, 'multi-labels-urls-firebase-db-firebase-adminsdk-fbsvc-87b7743762.json'))
+cred = credentials.Certificate(os.path.join(project_root, 'multi-labels-urls-firebase-db-firebase-adminsdk-fbsvc-9e89a61f22.json'))
 firebase_admin.initialize_app(cred, {
     'databaseURL': 'https://multi-labels-urls-firebase-db-default-rtdb.asia-southeast1.firebasedatabase.app/'
 })
@@ -126,6 +126,26 @@ def history():
 def settings():
     """Render the settings page"""
     return render_template('settings.html')
+
+@app.route('/quick-prediction')
+def quick_prediction():
+    """Render the quick prediction page"""
+    return render_template('quick_prediction.html')
+
+@app.route('/multi-model-prediction')
+def multi_model_prediction():
+    """Render the multi-model comparison page"""
+    return render_template('multi_model_prediction.html')
+
+@app.route('/analysis-dashboard')
+def analysis_dashboard():
+    """Render the analysis dashboard"""
+    return render_template('analysis_dashboard.html')
+
+@app.route('/model-info')
+def model_info():
+    """Render the model information page"""
+    return render_template('model_info.html')
 
 @app.route('/predict', methods=['POST'])
 def predict_url():

@@ -1,0 +1,449 @@
+{% extends "base.html" %}
+
+{% block title %}So sánh mô hình - URL Multi-Labels Detection{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="glass-card">
+                <div class="text-center mb-4">
+                    <i class="fas fa-layer-group prediction-icon"></i>
+                    <h2 class="fw-bold mb-3">So sánh kết quả đa mô hình</h2>
+                    <p class="text-muted">Kiểm tra URL với nhiều mô hình khác nhau để so sánh kết quả</p>
+                </div>
+
+                <!-- Prediction Form -->
+                <form id="multiModelForm">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label for="urlInput" class="form-label">URL cần kiểm tra</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-link"></i>
+                                </span>
+                                <input type="url" 
+                                       class="form-control" 
+                                       id="urlInput" 
+                                       placeholder="https://example.com"
+                                       required>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="thresholdRange" class="form-label">
+                                Ngưỡng: <span id="thresholdValue">50%</span>
+                            </label>
+                            <input type="range" 
+                                   class="form-range" 
+                                   id="thresholdRange" 
+                                   min="10" 
+                                   max="90" 
+                                   value="50">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="datasetSelect" class="form-label">Dataset</label>
+                            <select class="form-select" id="datasetSelect">
+                                <option value="dataset_1">Dataset 1</option>
+                                <option value="dataset_2">Dataset 2</option>
+                                <option value="dataset_3">Dataset 3</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="text-center">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-layer-group me-2"></i>
+                            So sánh các mô hình
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Loading -->
+                <div id="loadingSection" class="loading-section" style="display: none;">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Đang tải...</span>
+                        </div>
+                        <p class="mt-3 text-muted">Đang chạy các mô hình...</p>
+                        <div class="progress mt-3" style="max-width: 400px; margin: 0 auto;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 id="loadingProgress" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results -->
+                <div id="resultsSection" style="display: none;">
+                    <hr class="my-4">
+                    <h4 class="mb-3">
+                        <i class="fas fa-chart-bar me-2"></i>
+                        Kết quả so sánh mô hình
+                    </h4>
+                    
+                    <!-- Comparison Chart -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="chart-container">
+                                <canvas id="comparisonChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Model Results Grid -->
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="model-result-card" id="cnnResults">
+                                <div class="model-header">
+                                    <i class="fas fa-network-wired"></i>
+                                    <h5>CNN Model</h5>
+                                </div>
+                                <div class="model-content">
+                                    <!-- CNN results will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="model-result-card" id="xgbResults">
+                                <div class="model-header">
+                                    <i class="fas fa-tree"></i>
+                                    <h5>XGBoost</h5>
+                                </div>
+                                <div class="model-content">
+                                    <!-- XGBoost results will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="model-result-card" id="rfResults">
+                                <div class="model-header">
+                                    <i class="fas fa-forest"></i>
+                                    <h5>Random Forest</h5>
+                                </div>
+                                <div class="model-content">
+                                    <!-- Random Forest results will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Summary Section -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="summary-card">
+                                <h5>
+                                    <i class="fas fa-lightbulb me-2"></i>
+                                    Tóm tắt và khuyến nghị
+                                </h5>
+                                <div id="summaryContent">
+                                    <!-- Summary will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('multiModelForm');
+    const thresholdRange = document.getElementById('thresholdRange');
+    const thresholdValue = document.getElementById('thresholdValue');
+    
+    // Update threshold display
+    thresholdRange.addEventListener('input', function() {
+        thresholdValue.textContent = this.value + '%';
+    });
+    
+    // Form submission
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        performMultiModelPrediction();
+    });
+});
+
+function performMultiModelPrediction() {
+    const url = document.getElementById('urlInput').value.trim();
+    const threshold = document.getElementById('thresholdRange').value / 100;
+    const dataset = document.getElementById('datasetSelect').value;
+    
+    if (!url) {
+        showAlert('Vui lòng nhập URL cần kiểm tra!', 'warning');
+        return;
+    }
+    
+    // Show loading with progress
+    document.getElementById('loadingSection').style.display = 'block';
+    document.getElementById('resultsSection').style.display = 'none';
+    
+    let progress = 0;
+    const progressBar = document.getElementById('loadingProgress');
+    const progressInterval = setInterval(() => {
+        progress += 10;
+        progressBar.style.width = progress + '%';
+        if (progress >= 100) {
+            clearInterval(progressInterval);
+        }
+    }, 300);
+    
+    // Make prediction request
+    fetch('/predict-multi', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            url: url,
+            threshold: threshold,
+            dataset: dataset,
+            numerical: true
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        clearInterval(progressInterval);
+        document.getElementById('loadingSection').style.display = 'none';
+        if (data.error) {
+            showAlert(data.error, 'danger');
+        } else {
+            displayMultiModelResults(data);
+        }
+    })
+    .catch(error => {
+        clearInterval(progressInterval);
+        document.getElementById('loadingSection').style.display = 'none';
+        showAlert('Có lỗi xảy ra khi phân tích URL!', 'danger');
+        console.error('Error:', error);
+    });
+}
+
+function displayMultiModelResults(data) {
+    const resultsSection = document.getElementById('resultsSection');
+    const labels = data.label_names;
+    const modelTypes = ['cnn', 'xgb', 'rf'];
+    const modelNames = {'cnn': 'CNN', 'xgb': 'XGBoost', 'rf': 'Random Forest'};
+    const colors = {
+        'cnn': '#667eea',
+        'xgb': '#764ba2',
+        'rf': '#f093fb'
+    };
+    
+    // Create comparison chart
+    createComparisonChart(data, labels, modelTypes, colors);
+    
+    // Populate individual model results
+    let safeModels = 0;
+    let bestModel = null;
+    let bestConfidence = 0;
+    
+    modelTypes.forEach(modelType => {
+        const resultCard = document.getElementById(`${modelType}Results`);
+        const modelContent = resultCard.querySelector('.model-content');
+        const modelResult = data.results[modelType];
+        
+        if (modelResult.error) {
+            modelContent.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Lỗi: ${modelResult.error}
+                </div>
+            `;
+            return;
+        }
+        
+        const predictions = modelResult.predictions;
+        const isSafe = predictions[0] > data.threshold && Math.max(...predictions.slice(1)) <= data.threshold;
+        
+        if (isSafe) safeModels++;
+        
+        // Find best model based on benign confidence
+        if (predictions[0] > bestConfidence) {
+            bestConfidence = predictions[0];
+            bestModel = modelType;
+        }
+        
+        // Add safety indicator to card
+        resultCard.className = `model-result-card ${isSafe ? 'safe' : 'danger'}`;
+        
+        // Create prediction bars
+        let predictionBars = '';
+        predictions.forEach((prob, index) => {
+            const percentage = (prob * 100).toFixed(1);
+            const isPositive = prob > data.threshold;
+            
+            predictionBars += `
+                <div class="mini-prediction-bar mb-2">
+                    <div class="d-flex justify-content-between">
+                        <small>${labels[index]}</small>
+                        <small class="fw-bold">${percentage}%</small>
+                    </div>
+                    <div class="progress" style="height: 4px;">
+                        <div class="progress-bar" 
+                             style="width: ${percentage}%; background-color: ${colors[modelType]};"
+                             role="progressbar"></div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        modelContent.innerHTML = `
+            <div class="safety-indicator mb-3">
+                <i class="fas ${isSafe ? 'fa-shield-alt text-success' : 'fa-exclamation-triangle text-danger'}"></i>
+                <span class="ms-2 fw-semibold">${isSafe ? 'An toàn' : 'Nguy hiểm'}</span>
+            </div>
+            ${predictionBars}
+            <div class="execution-time">
+                <small class="text-muted">
+                    <i class="fas fa-clock me-1"></i>
+                    ${(modelResult.execution_time || 0).toFixed(2)}s
+                </small>
+            </div>
+        `;
+    });
+    
+    // Generate summary
+    generateSummary(data, safeModels, bestModel, modelNames);
+    
+    // Show results
+    resultsSection.style.display = 'block';
+}
+
+function createComparisonChart(data, labels, modelTypes, colors) {
+    const ctx = document.getElementById('comparisonChart').getContext('2d');
+    
+    const datasets = modelTypes.map(modelType => {
+        const modelResult = data.results[modelType];
+        if (modelResult.error) return null;
+        
+        return {
+            label: modelType.toUpperCase(),
+            data: modelResult.predictions,
+            backgroundColor: colors[modelType] + '40',
+            borderColor: colors[modelType],
+            borderWidth: 2,
+            pointBackgroundColor: colors[modelType],
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2,
+            pointRadius: 6
+        };
+    }).filter(dataset => dataset !== null);
+    
+    new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: labels,
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                r: {
+                    beginAtZero: true,
+                    max: 1,
+                    ticks: {
+                        stepSize: 0.2,
+                        callback: function(value) {
+                            return (value * 100).toFixed(0) + '%';
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(0,0,0,0.1)'
+                    },
+                    pointLabels: {
+                        font: {
+                            size: 12,
+                            weight: 'bold'
+                        }
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 20,
+                        usePointStyle: true
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + (context.parsed.r * 100).toFixed(1) + '%';
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function generateSummary(data, safeModels, bestModel, modelNames) {
+    const summaryContent = document.getElementById('summaryContent');
+    const totalModels = 3;
+    const consensus = safeModels / totalModels;
+    
+    let consensusText, consensusClass, recommendation;
+    
+    if (consensus >= 0.67) {
+        consensusText = 'Đồng thuận cao';
+        consensusClass = 'text-success';
+        recommendation = safeModels === totalModels ? 
+            'Tất cả các mô hình đều đánh giá URL này là an toàn.' :
+            'Đa số mô hình đánh giá URL này là an toàn.';
+    } else if (consensus >= 0.33) {
+        consensusText = 'Kết quả hỗn hợp';
+        consensusClass = 'text-warning';
+        recommendation = 'Các mô hình có ý kiến khác nhau về URL này. Nên thận trọng khi truy cập.';
+    } else {
+        consensusText = 'Đồng thuận thấp';
+        consensusClass = 'text-danger';
+        recommendation = 'Đa số mô hình đánh giá URL này có nguy cơ bảo mật. Không nên truy cập.';
+    }
+    
+    summaryContent.innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <div class="summary-item">
+                    <h6>Mức độ đồng thuận</h6>
+                    <p class="${consensusClass} fw-semibold">${consensusText} (${safeModels}/${totalModels} mô hình)</p>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="summary-item">
+                    <h6>Mô hình tốt nhất</h6>
+                    <p class="fw-semibold">${modelNames[bestModel]} (độ tin cậy cao nhất)</p>
+                </div>
+            </div>
+        </div>
+        <div class="recommendation">
+            <h6>Khuyến nghị</h6>
+            <p>${recommendation}</p>
+        </div>
+    `;
+}
+
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const container = document.querySelector('.glass-card');
+    container.insertBefore(alertDiv, container.firstChild);
+    
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 5000);
+}
+</script>
+{% endblock %}
