@@ -7,7 +7,7 @@ from flask import Blueprint, render_template, request, jsonify, flash, redirect,
 import firebase_admin
 from firebase_admin import db
 import numpy as np
-from url_multi_labels_predictor import URL_PREDICTOR
+from scripts.url_multi_labels_predictor import URL_PREDICTOR
 
 # Create a Blueprint for routes
 bp = Blueprint('main', __name__)

@@ -19,7 +19,7 @@ class Config:
     JSONIFY_PRETTYPRINT_REGULAR = True
 
     # Model paths (relative to project root)
-    MODELS_BASE_PATH = os.environ.get('MODELS_BASE_PATH', 'models')
+    MODELS_BASE_PATH = os.environ.get('MODELS_BASE_PATH', '../models')
 
     # Available datasets
     AVAILABLE_DATASETS = ['dataset_1', 'dataset_2', 'dataset_3']
