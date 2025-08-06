@@ -3,7 +3,7 @@ from flask import Flask
 from werkzeug.middleware.proxy_fix import ProxyFix
 import firebase_admin
 from firebase_admin import credentials
-from config import Config
+from configs.config import Config
 
 def create_app():
     # Create and configure the app
