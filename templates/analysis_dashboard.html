@@ -43,19 +43,6 @@
         </div>
         
         <div class="col-md-3">
-            <div class="metric-card danger">
-                <div class="metric-icon">
-                    <i class="fas fa-exclamation-triangle"></i>
-                </div>
-                <div class="metric-content">
-                    <div class="metric-number" id="totalMalicious">-</div>
-                    <div class="metric-label">URL Độc hại</div>
-                    <div class="metric-change" id="maliciousChange">-</div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-3">
             <div class="metric-card primary">
                 <div class="metric-icon">
                     <i class="fas fa-chart-line"></i>
@@ -77,6 +64,49 @@
                     <div class="metric-number" id="avgResponseTime">-</div>
                     <div class="metric-label">Thời gian TB</div>
                     <div class="metric-change" id="timeChange">-</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Benign and Malicious URL Breakdown -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h4 class="mb-3"><i class="fas fa-tasks me-2"></i>Phân loại dự đoán</h4>
+        </div>
+        <div class="col-md-3">
+            <div class="metric-card-small benign">
+                <div class="metric-icon-small"><i class="fas fa-shield-alt"></i></div>
+                <div class="metric-content-small">
+                    <div class="metric-number" id="benignCount">-</div>
+                    <div class="metric-label">An toàn</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="metric-card-small phishing">
+                <div class="metric-icon-small"><i class="fas fa-fish"></i></div>
+                <div class="metric-content-small">
+                    <div class="metric-number" id="phishingCount">-</div>
+                    <div class="metric-label">Phishing</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="metric-card-small defacement">
+                <div class="metric-icon-small"><i class="fas fa-paint-roller"></i></div>
+                <div class="metric-content-small">
+                    <div class="metric-number" id="defacementCount">-</div>
+                    <div class="metric-label">Defacement</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="metric-card-small malware">
+                <div class="metric-icon-small"><i class="fas fa-virus"></i></div>
+                <div class="metric-content-small">
+                    <div class="metric-number" id="malwareCount">-</div>
+                    <div class="metric-label">Malware</div>
                 </div>
             </div>
         </div>
@@ -216,12 +246,17 @@ function loadDashboardData() {
 
 function updateMetrics(stats) {
     document.getElementById('totalSafe').textContent = stats.safe_count || 0;
-    document.getElementById('totalMalicious').textContent = stats.malicious_count || 0;
     document.getElementById('totalPredictions').textContent = stats.total_predictions || 0;
     
     // Calculate average response time
     const avgTime = stats.avg_response_time || 0;
     document.getElementById('avgResponseTime').textContent = avgTime.toFixed(2) + 's';
+    
+    // Update benign and malicious URL breakdown metrics
+    document.getElementById('benignCount').textContent = stats.benign_count || 0;
+    document.getElementById('phishingCount').textContent = stats.phishing_count || 0;
+    document.getElementById('defacementCount').textContent = stats.defacement_count || 0;
+    document.getElementById('malwareCount').textContent = stats.malware_count || 0;
     
     // Update model accuracy metrics
     const modelAccuracy = {
@@ -250,26 +285,27 @@ function createThreatDistributionChart(stats) {
     
     // Simulate threat distribution data
     const threatData = {
-        benign: stats.safe_count || 0,
-        phishing: Math.floor((stats.malicious_count || 0) * 0.4),
-        malware: Math.floor((stats.malicious_count || 0) * 0.3),
-        defacement: Math.floor((stats.malicious_count || 0) * 0.3)
+        benign: stats.benign_count || 0,
+        phishing: stats.phishing_count || 0,
+        malware: stats.malware_count || 0,
+        defacement: stats.defacement_count || 0
     };
     
     new Chart(ctx, {
         type: 'doughnut',
         data: {
-            labels: ['Benign', 'Phishing', 'Malware', 'Defacement'],
+            labels: Object.keys(threatData),
             datasets: [{
                 data: Object.values(threatData),
-                backgroundColor: ['#28a745', '#fd7e14', '#dc3545', '#ffc107'],
-                borderWidth: 2,
-                borderColor: '#fff'
+                backgroundColor: ['#28a745', '#ffc107', '#dc3545', '#6f42c1'],
+                borderColor: '#ffffff',
+                borderWidth: 2
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            animation: false,
             plugins: {
                 legend: {
                     position: 'bottom',
@@ -302,6 +338,7 @@ function createModelPerformanceChart(stats) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            animation: false,
             plugins: {
                 legend: {
                     display: false
@@ -351,6 +388,7 @@ function createTimelineChart(history) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            animation: false,
             plugins: {
                 legend: {
                     position: 'top'
@@ -413,6 +451,7 @@ function createROCCurveChart() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            animation: false,
             scales: {
                 x: {
                     type: 'linear',

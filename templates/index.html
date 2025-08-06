@@ -95,17 +95,37 @@
                         </div>
                         <div class="stat-content">
                             <div class="stat-number" id="safeCount">-</div>
-                            <div class="stat-label">URL An toàn</div>
+                            <div class="stat-label">URL Benign</div>
+                        </div>
+                    </div>
+
+                    <div class="stat-item">
+                        <div class="stat-icon bg-warning">
+                            <i class="fas fa-fish"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-number" id="phishingCount">-</div>
+                            <div class="stat-label">URL Phishing</div>
+                        </div>
+                    </div>
+
+                    <div class="stat-item">
+                        <div class="stat-icon bg-info">
+                            <i class="fas fa-mask"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-number" id="defacementCount">-</div>
+                            <div class="stat-label">URL Defacement</div>
                         </div>
                     </div>
 
                     <div class="stat-item">
                         <div class="stat-icon bg-danger">
-                            <i class="fas fa-exclamation-triangle"></i>
+                            <i class="fas fa-virus"></i>
                         </div>
                         <div class="stat-content">
-                            <div class="stat-number" id="maliciousCount">-</div>
-                            <div class="stat-label">URL Độc hại</div>
+                            <div class="stat-number" id="malwareCount">-</div>
+                            <div class="stat-label">URL Malware</div>
                         </div>
                     </div>
 
@@ -190,13 +210,17 @@ function loadSystemStats() {
         .then(response => response.json())
         .then(data => {
             document.getElementById('safeCount').textContent = data.safe_count || 0;
-            document.getElementById('maliciousCount').textContent = data.malicious_count || 0;
+            document.getElementById('phishingCount').textContent = data.phishing_count || 0;
+            document.getElementById('defacementCount').textContent = data.defacement_count || 0;
+            document.getElementById('malwareCount').textContent = data.malware_count || 0;
             document.getElementById('totalCount').textContent = data.total_predictions || 0;
         })
         .catch(error => {
             console.error('Error loading stats:', error);
             document.getElementById('safeCount').textContent = '0';
-            document.getElementById('maliciousCount').textContent = '0';
+            document.getElementById('phishingCount').textContent = '0';
+            document.getElementById('defacementCount').textContent = '0';
+            document.getElementById('malwareCount').textContent = '0';
             document.getElementById('totalCount').textContent = '0';
         });
 }

@@ -139,211 +139,192 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function loadHistory() {
-    document.getElementById('historyLoading').style.display = 'block';
-    document.getElementById('historyTable').style.display = 'none';
-    document.getElementById('emptyState').style.display = 'none';
-    
+    const loadingDiv = document.getElementById('historyLoading');
+    const table = document.getElementById('historyTable');
+    loadingDiv.style.display = 'block';
+    table.style.display = 'none';
+
     fetch('/api/history')
         .then(response => response.json())
         .then(data => {
             allHistoryData = data;
-            filteredData = [...allHistoryData];
-            renderHistory();
-            document.getElementById('historyLoading').style.display = 'none';
-            
-            if (data.length === 0) {
-                document.getElementById('emptyState').style.display = 'block';
-            } else {
-                document.getElementById('historyTable').style.display = 'table';
-            }
+            filterHistory(); // Initial render
         })
         .catch(error => {
             console.error('Error loading history:', error);
-            document.getElementById('historyLoading').style.display = 'none';
-            document.getElementById('emptyState').style.display = 'block';
+            alert('Không thể tải lịch sử. Vui lòng thử lại.');
+        })
+        .finally(() => {
+            loadingDiv.style.display = 'none';
+            table.style.display = 'table';
         });
 }
 
 function filterHistory() {
-    const modelFilter = document.getElementById('modelFilter').value;
+    const modelFilter = document.getElementById('modelFilter').value.toLowerCase();
     const safetyFilter = document.getElementById('safetyFilter').value;
     const dateFilter = document.getElementById('dateFilter').value;
     const searchFilter = document.getElementById('searchFilter').value.toLowerCase();
-    
+
     filteredData = allHistoryData.filter(item => {
-        // Model filter
-        if (modelFilter && item.model_type !== modelFilter) return false;
-        
+        const firstResult = item.comparison_results && item.comparison_results[0] ? item.comparison_results[0] : {};
+        const labels = firstResult.predicted_labels || {};
+        const itemDate = new Date(item.prediction_timestamp).toISOString().split('T')[0];
+
         // Safety filter
-        if (safetyFilter) {
-            const predictions = item.predictions || [];
-            const isSafe = predictions[0] > 0.5 && Math.max(...predictions.slice(1)) <= 0.5;
-            if (safetyFilter === 'safe' && !isSafe) return false;
-            if (safetyFilter === 'malicious' && isSafe) return false;
-        }
-        
+        const isMalicious = labels.phishing || labels.defacement || labels.malware;
+        if (safetyFilter === 'safe' && isMalicious) return false;
+        if (safetyFilter === 'malicious' && !isMalicious) return false;
+
+        // Model filter
+        if (modelFilter && !item.comparison_results.some(r => r.model_name.toLowerCase() === modelFilter)) return false;
+
         // Date filter
-        if (dateFilter) {
-            const itemDate = new Date(item.timestamp).toDateString();
-            const filterDate = new Date(dateFilter).toDateString();
-            if (itemDate !== filterDate) return false;
-        }
-        
+        if (dateFilter && itemDate !== dateFilter) return false;
+
         // Search filter
         if (searchFilter && !item.url.toLowerCase().includes(searchFilter)) return false;
-        
+
         return true;
     });
-    
+
     currentPage = 1;
     renderHistory();
 }
 
 function renderHistory() {
-    const tbody = document.getElementById('historyTableBody');
+    const tableBody = document.getElementById('historyTableBody');
+    tableBody.innerHTML = '';
+
+    if (filteredData.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4">Không có dữ liệu nào khớp.</td></tr>';
+        renderPagination();
+        return;
+    }
+
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     const pageData = filteredData.slice(startIndex, endIndex);
-    
-    tbody.innerHTML = '';
-    
+
     pageData.forEach((item, index) => {
-        const predictions = item.predictions || [];
-        const isSafe = predictions[0] > 0.5 && Math.max(...predictions.slice(1)) <= 0.5;
-        const confidence = Math.max(...predictions) * 100;
-        const timestamp = new Date(item.timestamp).toLocaleString('vi-VN');
+        const firstResult = item.comparison_results && item.comparison_results[0] ? item.comparison_results[0] : {};
+        const labels = firstResult.predicted_labels || {};
+        const probabilities = firstResult.probabilities || [];
         
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>
-                <div class="url-cell">
-                    <span class="url-text" title="${item.url}">${truncateUrl(item.url, 50)}</span>
-                </div>
-            </td>
-            <td>
-                <span class="badge bg-primary">${item.model_type.toUpperCase()}</span>
-            </td>
-            <td>
-                <span class="badge ${isSafe ? 'bg-success' : 'bg-danger'}">
-                    <i class="fas ${isSafe ? 'fa-shield-alt' : 'fa-exclamation-triangle'} me-1"></i>
-                    ${isSafe ? 'An toàn' : 'Độc hại'}
-                </span>
-            </td>
-            <td>
-                <div class="confidence-cell">
-                    <div class="confidence-bar">
-                        <div class="confidence-fill" style="width: ${confidence}%; background-color: ${getConfidenceColor(confidence)};"></div>
+        let resultText = '<span class="badge bg-success">An toàn</span>';
+        let highestProb = 0;
+        if (labels.benign && probabilities.length > 0) highestProb = probabilities[0];
+
+        if (labels.phishing) {
+            resultText = '<span class="badge bg-warning">Phishing</span>';
+            if(probabilities.length > 3) highestProb = Math.max(highestProb, probabilities[3]);
+        } else if (labels.defacement) {
+            resultText = '<span class="badge bg-info">Defacement</span>';
+            if(probabilities.length > 1) highestProb = Math.max(highestProb, probabilities[1]);
+        } else if (labels.malware) {
+            resultText = '<span class="badge bg-danger">Malware</span>';
+            if(probabilities.length > 2) highestProb = Math.max(highestProb, probabilities[2]);
+        }
+
+        const confidence = (highestProb * 100).toFixed(1);
+        const modelNames = item.comparison_results.map(r => r.model_name).join(', ');
+        const timestamp = new Date(item.prediction_timestamp).toLocaleString('vi-VN');
+
+        const row = `
+            <tr data-index="${startIndex + index}">
+                <td><span title="${item.url}">${truncateUrl(item.url, 40)}</span></td>
+                <td>${modelNames}</td>
+                <td>${resultText}</td>
+                <td>
+                    <div class="progress" style="height: 20px;">
+                        <div class="progress-bar" role="progressbar" style="width: ${confidence}%; background-color: ${getConfidenceColor(confidence)};" aria-valuenow="${confidence}" aria-valuemin="0" aria-valuemax="100">${confidence}%</div>
                     </div>
-                    <small>${confidence.toFixed(1)}%</small>
-                </div>
-            </td>
-            <td>
-                <small class="text-muted">${timestamp}</small>
-            </td>
-            <td>
-                <button class="btn btn-sm btn-outline-primary" onclick="showDetail(${startIndex + index})">
-                    <i class="fas fa-eye"></i>
-                </button>
-            </td>
+                </td>
+                <td>${timestamp}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" onclick="showDetail(${startIndex + index})">Chi tiết</button>
+                </td>
+            </tr>
         `;
-        
-        tbody.appendChild(row);
+        tableBody.innerHTML += row;
     });
-    
+
     renderPagination();
 }
 
 function renderPagination() {
     const pagination = document.getElementById('historyPagination');
-    const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-    
     pagination.innerHTML = '';
-    
-    if (totalPages <= 1) return;
-    
+    const pageCount = Math.ceil(filteredData.length / itemsPerPage);
+
+    if (pageCount <= 1) return;
+
     // Previous button
-    const prevLi = document.createElement('li');
-    prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
-    prevLi.innerHTML = `<a class="page-link" href="#" onclick="changePage(${currentPage - 1})">Trước</a>`;
-    pagination.appendChild(prevLi);
-    
+    pagination.innerHTML += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="changePage(${currentPage - 1})">Trước</a></li>`;
+
     // Page numbers
-    const startPage = Math.max(1, currentPage - 2);
-    const endPage = Math.min(totalPages, currentPage + 2);
-    
-    for (let i = startPage; i <= endPage; i++) {
-        const li = document.createElement('li');
-        li.className = `page-item ${i === currentPage ? 'active' : ''}`;
-        li.innerHTML = `<a class="page-link" href="#" onclick="changePage(${i})">${i}</a>`;
-        pagination.appendChild(li);
+    for (let i = 1; i <= pageCount; i++) {
+        pagination.innerHTML += `<li class="page-item ${currentPage === i ? 'active' : ''}"><a class="page-link" href="#" onclick="changePage(${i})">${i}</a></li>`;
     }
-    
+
     // Next button
-    const nextLi = document.createElement('li');
-    nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
-    nextLi.innerHTML = `<a class="page-link" href="#" onclick="changePage(${currentPage + 1})">Sau</a>`;
-    pagination.appendChild(nextLi);
+    pagination.innerHTML += `<li class="page-item ${currentPage === pageCount ? 'disabled' : ''}"><a class="page-link" href="#" onclick="changePage(${currentPage + 1})">Sau</a></li>`;
 }
 
 function changePage(page) {
-    const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-    if (page < 1 || page > totalPages) return;
-    
+    if (page < 1 || page > Math.ceil(filteredData.length / itemsPerPage)) return;
     currentPage = page;
     renderHistory();
 }
 
 function showDetail(index) {
     const item = filteredData[index];
-    const predictions = item.predictions || [];
     const labels = ['Benign', 'Defacement', 'Malware', 'Phishing'];
-    const colors = ['#28a745', '#ffc107', '#dc3545', '#fd7e14'];
+    const colors = ['#28a745', '#0dcaf0', '#dc3545', '#ffc107'];
     
     let detailHtml = `
-        <div class="row mb-3">
-            <div class="col-md-6">
-                <h6>URL:</h6>
-                <p class="text-break">${item.url}</p>
-            </div>
-            <div class="col-md-6">
-                <h6>Mô hình:</h6>
-                <p><span class="badge bg-primary">${item.model_type.toUpperCase()}</span></p>
-            </div>
-        </div>
-        
-        <div class="row mb-3">
-            <div class="col-md-6">
-                <h6>Dataset:</h6>
-                <p>${item.dataset || 'N/A'}</p>
-            </div>
-            <div class="col-md-6">
-                <h6>Thời gian thực thi:</h6>
-                <p>${(item.execution_time || 0).toFixed(3)}s</p>
-            </div>
-        </div>
-        
-        <h6>Chi tiết dự đoán:</h6>
-        <div class="prediction-details">
+        <h5 class="mb-3">URL: <span class="fw-normal text-break">${item.url}</span></h5>
+        <hr/>
     `;
-    
-    predictions.forEach((prob, i) => {
-        const percentage = (prob * 100).toFixed(1);
+
+    item.comparison_results.forEach(result => {
+        if (result.error) {
+            detailHtml += `
+                <div class="mb-4">
+                    <h6>${result.model_name}</h6>
+                    <div class="alert alert-danger">Lỗi: ${result.error}</div>
+                </div>
+            `;
+            return;
+        }
+
         detailHtml += `
-            <div class="prediction-bar-item mb-3">
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                    <span class="fw-semibold">${labels[i]}</span>
-                    <span class="badge" style="background-color: ${colors[i]}">${percentage}%</span>
+            <div class="mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0">${result.model_name}</h6>
+                    <span class="badge bg-secondary">${(result.execution_time_ms || 0).toFixed(0)} ms</span>
                 </div>
-                <div class="progress">
-                    <div class="progress-bar" 
-                         style="width: ${percentage}%; background-color: ${colors[i]};"
-                         role="progressbar"></div>
-                </div>
-            </div>
         `;
+
+        const probabilities = result.probabilities || [];
+        probabilities.forEach((prob, i) => {
+            const percentage = (prob * 100).toFixed(1);
+            detailHtml += `
+                <div class="prediction-bar-item mb-2">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="fw-semibold">${labels[i]}</span>
+                        <span class="badge" style="background-color: ${colors[i]}; min-width: 50px;">${percentage}%</span>
+                    </div>
+                    <div class="progress">
+                        <div class="progress-bar" 
+                             style="width: ${percentage}%; background-color: ${colors[i]};"
+                             role="progressbar"></div>
+                    </div>
+                </div>
+            `;
+        });
+        detailHtml += '</div>';
     });
-    
-    detailHtml += '</div>';
     
     document.getElementById('detailModalBody').innerHTML = detailHtml;
     new bootstrap.Modal(document.getElementById('detailModal')).show();
@@ -356,7 +337,7 @@ function exportHistory() {
     }
     
     const csvContent = generateCSV(filteredData);
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
@@ -368,22 +349,26 @@ function exportHistory() {
 }
 
 function generateCSV(data) {
-    const headers = ['URL', 'Model Type', 'Dataset', 'Benign', 'Defacement', 'Malware', 'Phishing', 'Execution Time', 'Timestamp'];
+    const headers = ['URL', 'Timestamp', 
+                     'CNN_Benign', 'CNN_Defacement', 'CNN_Malware', 'CNN_Phishing', 'CNN_Time_ms',
+                     'XGB_Benign', 'XGB_Defacement', 'XGB_Malware', 'XGB_Phishing', 'XGB_Time_ms',
+                     'RF_Benign', 'RF_Defacement', 'RF_Malware', 'RF_Phishing', 'RF_Time_ms'];
     let csv = headers.join(',') + '\n';
     
     data.forEach(item => {
-        const predictions = item.predictions || [];
-        const row = [
-            `"${item.url}"`,
-            item.model_type,
-            item.dataset || '',
-            predictions[0] || 0,
-            predictions[1] || 0,
-            predictions[2] || 0,
-            predictions[3] || 0,
-            item.execution_time || 0,
-            item.timestamp || ''
-        ];
+        const rowData = { url: `"${item.url}"`, timestamp: item.prediction_timestamp };
+        item.comparison_results.forEach(res => {
+            const model = res.model_name;
+            if (res.probabilities) {
+                res.probabilities.forEach((p, i) => {
+                    const label = ['Benign', 'Defacement', 'Malware', 'Phishing'][i];
+                    rowData[`${model}_${label}`] = p;
+                });
+            }
+            rowData[`${model}_Time_ms`] = res.execution_time_ms;
+        });
+
+        const row = headers.map(h => rowData[h.replace(/ /g, '_')] || '');
         csv += row.join(',') + '\n';
     });
     
@@ -393,14 +378,9 @@ function generateCSV(data) {
 function refreshHistory() {
     const button = event.target.closest('button');
     const icon = button.querySelector('i');
-    
     icon.classList.add('fa-spin');
-    
     loadHistory();
-    
-    setTimeout(() => {
-        icon.classList.remove('fa-spin');
-    }, 1000);
+    setTimeout(() => { icon.classList.remove('fa-spin'); }, 1000);
 }
 
 function truncateUrl(url, maxLength) {

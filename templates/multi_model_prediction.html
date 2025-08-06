@@ -156,13 +156,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('multiModelForm');
     const thresholdRange = document.getElementById('thresholdRange');
     const thresholdValue = document.getElementById('thresholdValue');
-    
-    // Update threshold display
+
     thresholdRange.addEventListener('input', function() {
         thresholdValue.textContent = this.value + '%';
     });
-    
-    // Form submission
+
     form.addEventListener('submit', function(e) {
         e.preventDefault();
         performMultiModelPrediction();
@@ -170,46 +168,29 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function performMultiModelPrediction() {
-    const url = document.getElementById('urlInput').value.trim();
-    const threshold = document.getElementById('thresholdRange').value / 100;
+    const url = document.getElementById('urlInput').value;
     const dataset = document.getElementById('datasetSelect').value;
-    
+
     if (!url) {
-        showAlert('Vui lòng nhập URL cần kiểm tra!', 'warning');
+        showAlert('Vui lòng nhập URL.', 'warning');
         return;
     }
-    
-    // Show loading with progress
+
     document.getElementById('loadingSection').style.display = 'block';
     document.getElementById('resultsSection').style.display = 'none';
-    
-    let progress = 0;
-    const progressBar = document.getElementById('loadingProgress');
-    const progressInterval = setInterval(() => {
-        progress += 10;
-        progressBar.style.width = progress + '%';
-        if (progress >= 100) {
-            clearInterval(progressInterval);
-        }
-    }, 300);
-    
-    // Make prediction request
-    fetch('/predict-multi', {
+
+    fetch('/api/predict-multi-model', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            url: url,
-            threshold: threshold,
-            dataset: dataset,
-            numerical: true
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: url, dataset: dataset })
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => { throw new Error(err.error || 'Lỗi không xác định từ server.'); });
+        }
+        return response.json();
+    })
     .then(data => {
-        clearInterval(progressInterval);
-        document.getElementById('loadingSection').style.display = 'none';
         if (data.error) {
             showAlert(data.error, 'danger');
         } else {
@@ -217,177 +198,113 @@ function performMultiModelPrediction() {
         }
     })
     .catch(error => {
-        clearInterval(progressInterval);
-        document.getElementById('loadingSection').style.display = 'none';
-        showAlert('Có lỗi xảy ra khi phân tích URL!', 'danger');
+        showAlert('Có lỗi xảy ra khi so sánh mô hình: ' + error.message, 'danger');
         console.error('Error:', error);
+    })
+    .finally(() => {
+        document.getElementById('loadingSection').style.display = 'none';
     });
 }
 
 function displayMultiModelResults(data) {
     const resultsSection = document.getElementById('resultsSection');
-    const labels = data.label_names;
-    const modelTypes = ['cnn', 'xgb', 'rf'];
-    const modelNames = {'cnn': 'CNN', 'xgb': 'XGBoost', 'rf': 'Random Forest'};
-    const colors = {
-        'cnn': '#667eea',
-        'xgb': '#764ba2',
-        'rf': '#f093fb'
-    };
-    
-    // Create comparison chart
-    createComparisonChart(data, labels, modelTypes, colors);
-    
-    // Populate individual model results
-    let safeModels = 0;
-    let bestModel = null;
-    let bestConfidence = 0;
-    
-    modelTypes.forEach(modelType => {
-        const resultCard = document.getElementById(`${modelType}Results`);
-        const modelContent = resultCard.querySelector('.model-content');
-        const modelResult = data.results[modelType];
-        
-        if (modelResult.error) {
-            modelContent.innerHTML = `
-                <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    Lỗi: ${modelResult.error}
-                </div>
-            `;
+    const modelNames = ['CNN', 'XGB', 'RF'];
+    const results = data.comparison_results;
+
+    let safeModelCount = 0;
+    let bestModel = { name: '', confidence: -1 };
+
+    results.forEach(result => {
+        const cardId = `${result.model_name.toLowerCase()}Results`;
+        const card = document.getElementById(cardId);
+        if (!card) return;
+
+        const contentDiv = card.querySelector('.model-content');
+        contentDiv.innerHTML = ''; // Clear previous results
+
+        if (result.error) {
+            contentDiv.innerHTML = `<div class="alert alert-danger p-2">Lỗi: ${result.error}</div>`;
             return;
         }
-        
-        const predictions = modelResult.predictions;
-        const isSafe = predictions[0] > data.threshold && Math.max(...predictions.slice(1)) <= data.threshold;
-        
-        if (isSafe) safeModels++;
-        
-        // Find best model based on benign confidence
-        if (predictions[0] > bestConfidence) {
-            bestConfidence = predictions[0];
-            bestModel = modelType;
-        }
-        
-        // Add safety indicator to card
-        resultCard.className = `model-result-card ${isSafe ? 'safe' : 'danger'}`;
-        
-        // Create prediction bars
-        let predictionBars = '';
-        predictions.forEach((prob, index) => {
+
+        const labels = result.predicted_labels;
+        const isMalicious = labels.phishing || labels.defacement || labels.malware;
+        if (!isMalicious) safeModelCount++;
+
+        const overallResult = `<div class="overall-result mb-3 ${!isMalicious ? 'text-success' : 'text-danger'}">
+            <i class="fas ${!isMalicious ? 'fa-shield-alt' : 'fa-exclamation-triangle'} me-2"></i>
+            <strong>${!isMalicious ? 'An Toàn' : 'Nguy Hiểm'}</strong>
+        </div>`;
+        contentDiv.innerHTML += overallResult;
+
+        const labelKeys = ['Benign', 'Defacement', 'Malware', 'Phishing'];
+        const probabilities = result.probabilities;
+        let maxProb = -1;
+
+        probabilities.forEach((prob, i) => {
             const percentage = (prob * 100).toFixed(1);
-            const isPositive = prob > data.threshold;
-            
-            predictionBars += `
-                <div class="mini-prediction-bar mb-2">
-                    <div class="d-flex justify-content-between">
-                        <small>${labels[index]}</small>
-                        <small class="fw-bold">${percentage}%</small>
-                    </div>
-                    <div class="progress" style="height: 4px;">
-                        <div class="progress-bar" 
-                             style="width: ${percentage}%; background-color: ${colors[modelType]};"
-                             role="progressbar"></div>
-                    </div>
+            if (prob > maxProb) maxProb = prob;
+            contentDiv.innerHTML += `
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span>${labelKeys[i]}</span>
+                    <span class="badge bg-light text-dark">${percentage}%</span>
+                </div>
+                <div class="progress mb-2" style="height: 6px;">
+                    <div class="progress-bar" style="width: ${percentage}%;"></div>
                 </div>
             `;
         });
-        
-        modelContent.innerHTML = `
-            <div class="safety-indicator mb-3">
-                <i class="fas ${isSafe ? 'fa-shield-alt text-success' : 'fa-exclamation-triangle text-danger'}"></i>
-                <span class="ms-2 fw-semibold">${isSafe ? 'An toàn' : 'Nguy hiểm'}</span>
-            </div>
-            ${predictionBars}
-            <div class="execution-time">
-                <small class="text-muted">
-                    <i class="fas fa-clock me-1"></i>
-                    ${(modelResult.execution_time || 0).toFixed(2)}s
-                </small>
-            </div>
-        `;
+
+        if (maxProb > bestModel.confidence) {
+            bestModel = { name: result.model_name, confidence: maxProb };
+        }
+
+        contentDiv.innerHTML += `<div class="text-muted small mt-3 text-end">Thời gian: ${(result.execution_time_ms).toFixed(0)} ms</div>`;
     });
-    
-    // Generate summary
-    generateSummary(data, safeModels, bestModel, modelNames);
-    
-    // Show results
+
+    createComparisonChart(results);
+    generateSummary(safeModelCount, bestModel.name, modelNames.length);
     resultsSection.style.display = 'block';
 }
 
-function createComparisonChart(data, labels, modelTypes, colors) {
+function createComparisonChart(results) {
     const ctx = document.getElementById('comparisonChart').getContext('2d');
-    
-    const datasets = modelTypes.map(modelType => {
-        const modelResult = data.results[modelType];
-        if (modelResult.error) return null;
-        
+    const labels = ['Benign', 'Defacement', 'Malware', 'Phishing'];
+    const modelColors = {
+        'CNN': 'rgba(255, 99, 132, 0.7)',
+        'XGB': 'rgba(54, 162, 235, 0.7)',
+        'RF': 'rgba(75, 192, 192, 0.7)'
+    };
+
+    const datasets = results.map(result => {
+        if (result.error) return null;
         return {
-            label: modelType.toUpperCase(),
-            data: modelResult.predictions,
-            backgroundColor: colors[modelType] + '40',
-            borderColor: colors[modelType],
-            borderWidth: 2,
-            pointBackgroundColor: colors[modelType],
-            pointBorderColor: '#fff',
-            pointBorderWidth: 2,
-            pointRadius: 6
+            label: result.model_name,
+            data: result.probabilities,
+            backgroundColor: modelColors[result.model_name].replace('0.7', '0.2'),
+            borderColor: modelColors[result.model_name],
+            pointBackgroundColor: modelColors[result.model_name],
         };
-    }).filter(dataset => dataset !== null);
-    
-    new Chart(ctx, {
+    }).filter(ds => ds !== null);
+
+    if (window.myRadarChart) {
+        window.myRadarChart.destroy();
+    }
+
+    window.myRadarChart = new Chart(ctx, {
         type: 'radar',
-        data: {
-            labels: labels,
-            datasets: datasets
-        },
+        data: { labels: labels, datasets: datasets },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            scales: {
-                r: {
-                    beginAtZero: true,
-                    max: 1,
-                    ticks: {
-                        stepSize: 0.2,
-                        callback: function(value) {
-                            return (value * 100).toFixed(0) + '%';
-                        }
-                    },
-                    grid: {
-                        color: 'rgba(0,0,0,0.1)'
-                    },
-                    pointLabels: {
-                        font: {
-                            size: 12,
-                            weight: 'bold'
-                        }
-                    }
-                }
-            },
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        padding: 20,
-                        usePointStyle: true
-                    }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return context.dataset.label + ': ' + (context.parsed.r * 100).toFixed(1) + '%';
-                        }
-                    }
-                }
-            }
+            scales: { r: { beginAtZero: true, max: 1 } },
+            plugins: { legend: { position: 'top' } }
         }
     });
 }
 
-function generateSummary(data, safeModels, bestModel, modelNames) {
+function generateSummary(safeModels, bestModelName, totalModels) {
     const summaryContent = document.getElementById('summaryContent');
-    const totalModels = 3;
     const consensus = safeModels / totalModels;
     
     let consensusText, consensusClass, recommendation;
@@ -418,12 +335,12 @@ function generateSummary(data, safeModels, bestModel, modelNames) {
             </div>
             <div class="col-md-6">
                 <div class="summary-item">
-                    <h6>Mô hình tốt nhất</h6>
-                    <p class="fw-semibold">${modelNames[bestModel]} (độ tin cậy cao nhất)</p>
+                    <h6>Mô hình hiệu quả nhất</h6>
+                    <p class="fw-semibold">${bestModelName} (độ tin cậy cao nhất)</p>
                 </div>
             </div>
         </div>
-        <div class="recommendation">
+        <div class="recommendation mt-3">
             <h6>Khuyến nghị</h6>
             <p>${recommendation}</p>
         </div>
@@ -431,19 +348,19 @@ function generateSummary(data, safeModels, bestModel, modelNames) {
 }
 
 function showAlert(message, type) {
+    const container = document.querySelector('.glass-card');
+    const existingAlert = container.querySelector('.alert-dismissible');
+    if(existingAlert) existingAlert.remove();
+
     const alertDiv = document.createElement('div');
-    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show mt-3`;
+    alertDiv.setAttribute('role', 'alert');
     alertDiv.innerHTML = `
         ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     `;
     
-    const container = document.querySelector('.glass-card');
-    container.insertBefore(alertDiv, container.firstChild);
-    
-    setTimeout(() => {
-        alertDiv.remove();
-    }, 5000);
+    container.insertBefore(alertDiv, container.querySelector('form'));
 }
 </script>
 {% endblock %}

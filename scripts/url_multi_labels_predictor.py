@@ -4,6 +4,7 @@ import pandas as pd
 import nltk
 import re
 import joblib
+import time
 
 from tensorflow.keras.models import load_model
 from scripts.url_features_extractor import URL_EXTRACTOR
@@ -33,6 +34,10 @@ class URL_PREDICTOR(object):
         self.SCALER_PATH = os.path.join(BASE_DIR, "models", f"{self.dataset}", "scaler.pkl")
         self.CNN_VECTORIZER_PATH = os.path.join(BASE_DIR, "models", f"{self.dataset}", "tfidf_vectorizer_CNN.pkl")
         self.XGB_RF_VECTORIZER_PATH = os.path.join(BASE_DIR, "models", f"{self.dataset}", "tfidf_vectorizer_XGB_RF.pkl")
+        
+        # Load scaler once during initialization
+        self.scaler = self.load_scaler()
+
         self.df = self.extract_url_features_to_df()
         self.y = self.df['label'] if 'label' in self.df.columns else None
         self.ps = PorterStemmer()
@@ -40,71 +45,101 @@ class URL_PREDICTOR(object):
         self.label_names = ['benign', 'defacement', 'malware', 'phishing']
         self.predictions = None
         self.predicted_labels = None
+        self.exec_time = 0
+
+    def get_features_as_dict(self):
+        """Returns the extracted features as a dictionary."""
+        if self.df is not None:
+            # Convert dataframe to dict, excluding non-feature columns
+            features_dict = self.df.drop(columns=['label', 'url'], errors='ignore').to_dict(orient='records')
+            return features_dict[0] if features_dict else {}
+        return {}
+
+    def _format_predictions(self, predictions, threshold):
+        """Formats raw model predictions into the required structure."""
+        # Handle multi-label array from scikit-learn
+        if isinstance(predictions, list) and len(predictions) == len(self.label_names):
+            # This is likely from a multi-output classifier, stack the probabilities for the positive class
+            predictions = np.stack([p[:, 1] if p.shape[1] > 1 else p.flatten() for p in predictions], axis=1)
+
+        self.predictions = predictions.flatten().tolist()
+        binary_labels = (predictions.flatten() > threshold).astype(int)
+        self.predicted_labels = {label: int(pred) for label, pred in zip(self.label_names, binary_labels) if pred == 1}
 
     def predict_with_RF(self, threshold=0.5, numerical=True):
+        start_time = time.time()
+        model_path = self.RF_NUMERICAL_MODEL_PATH if numerical else self.RF_NON_NUMERICAL_MODEL_PATH
+        model = self.model_loader(model_path)
+        
         if numerical:
-            self.X3_pre_processing()
-            self.RF_NUMERICAL_MODEL = self.model_loader(self.RF_NUMERICAL_MODEL_PATH)
-            if hasattr(self.RF_NUMERICAL_MODEL, 'predict_proba'):
-                self.predictions = self.RF_NUMERICAL_MODEL.predict_proba(self.X3)
-                # Nếu là multi-label, predict_proba trả về list các mảng, cần stack lại
-                if isinstance(self.predictions, list):
-                    self.predictions = np.stack([p[:, 1] if p.shape[1] == 2 else p for p in self.predictions], axis=1)
-                self.predicted_labels = (self.predictions > threshold).astype(int)
-            else:
-                self.predictions = self.RF_NUMERICAL_MODEL.predict(self.X3)
-                self.predicted_labels = self.predictions
+            data = self.X1_pre_processing()
         else:
-            self.X4_pre_processing()
-            self.RF_NON_NUMERICAL_MODEL = self.model_loader(self.RF_NON_NUMERICAL_MODEL_PATH)
-            if hasattr(self.RF_NON_NUMERICAL_MODEL, 'predict_proba'):
-                self.predictions = self.RF_NON_NUMERICAL_MODEL.predict_proba(self.X4)
-                if isinstance(self.predictions, list):
-                    self.predictions = np.stack([p[:, 1] if p.shape[1] == 2 else p for p in self.predictions], axis=1)
-                self.predicted_labels = (self.predictions > threshold).astype(int)
-            else:
-                self.predictions = self.RF_NON_NUMERICAL_MODEL.predict(self.X4)
-                self.predicted_labels = self.predictions
+            data = self.X4_pre_processing()
+
+        raw_predictions = model.predict_proba(data)
+        self._format_predictions(raw_predictions, threshold)
+        
+        # If the prediction is benign, it's already correctly set.
+        # Otherwise, filter for the specific model's labels.
+        if 'benign' in self.predicted_labels:
+            final_labels = {'benign': 1}
+        else:
+            final_labels = {label: self.predicted_labels.get(label, 0) for label in self.label_names}
+
+        self.predicted_labels = final_labels
+        
+        end_time = time.time()
+        self.exec_time = (end_time - start_time) * 1000 # Convert to ms
 
     def predict_with_CNN(self, threshold=0.5, numerical=True):
+        start_time = time.time()
+        model_path = self.CNN_NUMERICAL_MODEL_PATH if numerical else self.CNN_NON_NUMERICAL_MODEL_PATH
+        model = self.model_loader(model_path)
+
         if numerical:
-            self.X1_pre_processing()
-            self.CNN_NUMERICAL_MODEL = self.model_loader(self.CNN_NUMERICAL_MODEL_PATH)
-            self.predictions = self.CNN_NUMERICAL_MODEL.predict(self.X1)
-            self.predicted_labels = (self.predictions > threshold).astype(int)
+            data = self.X1_pre_processing()
         else:
-            self.X2_pre_processing()
-            self.CNN_NON_NUMERICAL_MODEL = self.model_loader(self.CNN_NON_NUMERICAL_MODEL_PATH)
-            self.predictions = self.CNN_NON_NUMERICAL_MODEL.predict(self.X2)
-            self.predicted_labels = (self.predictions > threshold).astype(int)
+            data = self.X2_pre_processing()
+
+        raw_predictions = model.predict(data)
+        self._format_predictions(raw_predictions, threshold)
+        
+        # If the prediction is benign, it's already correctly set.
+        # Otherwise, filter for the specific model's labels.
+        if 'benign' in self.predicted_labels:
+            final_labels = {'benign': 1}
+        else:
+            final_labels = {label: self.predicted_labels.get(label, 0) for label in self.label_names}
+
+        self.predicted_labels = final_labels
+        
+        end_time = time.time()
+        self.exec_time = (end_time - start_time) * 1000 # Convert to ms
 
     def predict_with_XGB(self, threshold=0.5, numerical=True):
+        start_time = time.time()
+        model_path = self.XGB_NUMERICAL_MODEL_PATH if numerical else self.XGB_NON_NUMERICAL_MODEL_PATH
+        model = self.model_loader(model_path)
+
         if numerical:
-            self.X3_pre_processing()
-            self.XGB_NUMERICAL_MODEL = self.model_loader(self.XGB_NUMERICAL_MODEL_PATH)
-            # Lấy xác suất dự đoán
-            if hasattr(self.XGB_NUMERICAL_MODEL, 'predict_proba'):
-                self.predictions = self.XGB_NUMERICAL_MODEL.predict_proba(self.X3)
-                # Nếu là multi-label, predict_proba trả về list các mảng, cần stack lại
-                if isinstance(self.predictions, list):
-                    self.predictions = np.stack([p[:, 1] if p.shape[1] == 2 else p for p in self.predictions], axis=1)
-                # Nếu là binary/multi-label dạng (n_samples, n_classes)
-                self.predicted_labels = (self.predictions > threshold).astype(int)
-            else:
-                # Nếu model không có predict_proba (rất hiếm), fallback predict trả về nhãn
-                self.predictions = self.XGB_NUMERICAL_MODEL.predict(self.X3)
-                self.predicted_labels = self.predictions
+            data = self.X1_pre_processing()
         else:
-            self.X4_pre_processing()
-            self.XGB_NON_NUMERICAL_MODEL = self.model_loader(self.XGB_NON_NUMERICAL_MODEL_PATH)
-            if hasattr(self.XGB_NON_NUMERICAL_MODEL, 'predict_proba'):
-                self.predictions = self.XGB_NON_NUMERICAL_MODEL.predict_proba(self.X4)
-                if isinstance(self.predictions, list):
-                    self.predictions = np.stack([p[:, 1] if p.shape[1] == 2 else p for p in self.predictions], axis=1)
-                self.predicted_labels = (self.predictions > threshold).astype(int)
-            else:
-                self.predictions = self.XGB_NON_NUMERICAL_MODEL.predict(self.X4)
-                self.predicted_labels = self.predictions
+            data = self.X4_pre_processing()
+
+        raw_predictions = model.predict_proba(data)
+        self._format_predictions(raw_predictions, threshold)
+        
+        # If the prediction is benign, it's already correctly set.
+        # Otherwise, filter for the specific model's labels.
+        if 'benign' in self.predicted_labels:
+            final_labels = {'benign': 1}
+        else:
+            final_labels = {label: self.predicted_labels.get(label, 0) for label in self.label_names}
+
+        self.predicted_labels = final_labels
+        
+        end_time = time.time()
+        self.exec_time = (end_time - start_time) * 1000 # Convert to ms
 
     def print_result(self):
         if self.predictions is not None and self.predicted_labels is not None:
@@ -115,37 +150,34 @@ class URL_PREDICTOR(object):
                 if self.y is not None:
                     true_label = self.y.iloc[i]
                     print(f"True label: {true_label}")
+            print(f"\tExecution Time: {self.exec_time:.2f} ms")
 
     def X1_pre_processing(self):
-        self.X1 = self.df.drop(columns=['label', 'url'])
-        columns_to_scale = [col for col in self.X1.columns if
-                            col not in ['domain_registration_length', 'domain_age', 'page_rank', 'google_index']]
-        self.load_scaler()
-        self.X1[columns_to_scale] = self.scaler.transform(self.X1[columns_to_scale])
-        self.X1 = np.expand_dims(self.X1, axis=-1)
+        X1 = self.df.drop(columns=['label', 'url'], errors='ignore')
+        if self.scaler:
+            X1 = self.scaler.transform(X1)
+        return X1
 
     def load_scaler(self):
         try:
             if os.path.exists(self.SCALER_PATH):
-                self.scaler = joblib.load(self.SCALER_PATH)
-                print(f"{self.SCALER_PATH} loaded successfully!")
+                scaler = joblib.load(self.SCALER_PATH)
+                print(f"Scaler loaded successfully from {self.SCALER_PATH}")
+                return scaler
             else:
-                # Create a default scaler if not found
-                from sklearn.preprocessing import MinMaxScaler
-                self.scaler = MinMaxScaler()
-                print(f"Scaler not found at {self.SCALER_PATH}, using default MinMaxScaler")
+                print(f"Scaler not found at {self.SCALER_PATH}. Numerical predictions will not be scaled.")
+                return None
         except Exception as e:
-            print(f"Error loading {self.SCALER_PATH}: {e}")
-            # Use default scaler
-            from sklearn.preprocessing import MinMaxScaler
-            self.scaler = MinMaxScaler()
+            print(f"Error loading scaler: {e}. Numerical predictions will not be scaled.")
+            return None
 
     def X2_pre_processing(self):
-        self.X2 = self.df['url']
-        self.albumentations(self.X2)
+        X2 = self.df['url']
+        self.albumentations(X2)
         self.load_vectorizer(self.CNN_VECTORIZER_PATH)
-        self.X2 = self.cv.transform(self.corpus).toarray()
-        self.X2 = np.expand_dims(self.X2, axis=-1)
+        X2 = self.cv.transform(self.corpus).toarray()
+        X2 = np.reshape(X2, (X2.shape[0], X2.shape[1], 1))
+        return X2
 
     def load_vectorizer(self, PATH):
         try:
@@ -164,13 +196,16 @@ class URL_PREDICTOR(object):
             self.cv = TfidfVectorizer(max_features=1000)
 
     def X3_pre_processing(self):
-        self.X3 = self.df.drop(columns=['label', 'url'])
+        # This method is redundant now. X1_pre_processing handles numerical features.
+        return self.X1_pre_processing()
 
     def X4_pre_processing(self):
-        self.X4 = self.df['url']
-        self.albumentations2(self.X4)
+        X4 = self.df['url']
+        self.corpus = [] # Reset corpus for each call
+        self.albumentations2(X4)
         self.load_vectorizer(self.XGB_RF_VECTORIZER_PATH)
-        self.X4 = self.cv.transform(self.corpus).toarray()
+        X4 = self.cv.transform(self.corpus).toarray()
+        return X4
 
     @staticmethod
     def download_stopsword():
@@ -221,27 +256,20 @@ class URL_PREDICTOR(object):
         return pd.DataFrame(df)
 
     def model_loader(self, PATH):
-        model = None
+        """Loads a model from the given path."""
         try:
-            if os.path.exists(PATH):
-                if PATH.endswith('.keras'):
-                    model = load_model(PATH)
-                    print(f"{PATH} (Keras model) loaded successfully!")
-                elif PATH.endswith('.pkl'):
-                    model = joblib.load(PATH)
-                    print(f"{PATH} (Pickle model) loaded successfully!")
-                else:
-                    raise ValueError(f"Unsupported model file extension for {PATH}")
+            if "keras" in PATH:
+                model = load_model(PATH)
             else:
-                print(f"Model not found at {PATH}")
-                # Return a dummy model for testing
-                from sklearn.dummy import DummyClassifier
-                model = DummyClassifier(strategy='uniform', random_state=42)
-                print(f"Using dummy model for {PATH}")
+                model = joblib.load(PATH)
+            print(f"Model loaded successfully from {PATH}")
         except Exception as e:
-            print(f"Error loading model: {e}")
-            # Return a dummy model for testing
+            print(f"Error loading model {PATH}: {e}")
             from sklearn.dummy import DummyClassifier
+            # Create and fit a dummy model with placeholder data to prevent crashes
             model = DummyClassifier(strategy='uniform', random_state=42)
-            print(f"Using dummy model due to error")
+            dummy_X = np.zeros((1, 10)) # Dummy features
+            dummy_y = np.zeros((1, 4))   # Dummy labels for 4 classes
+            model.fit(dummy_X, dummy_y)
+            print(f"Using fitted dummy model due to error")
         return model
