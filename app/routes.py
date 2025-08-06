@@ -16,45 +16,57 @@ bp = Blueprint('main', __name__)
 logging.basicConfig(level=logging.DEBUG)
 
 def hash_url(url: str) -> str:
-    """Generate SHA256 hash of URL"""
+    """Generate SHA256 hash of URL."""
     return hashlib.sha256(url.encode('utf-8')).hexdigest()
 
-def save_prediction_to_firebase(url, predictions, model_type, dataset):
-    """Save prediction results to Firebase"""
+def save_prediction_to_firebase(url, features, comparison_results):
+    """Save prediction results to the new Firebase structure."""
     try:
         if not firebase_admin._apps:
-            return False
+            return None
 
-        ref = db.reference('predictions')
-        prediction_data = {
-            'url': url,
-            'url_hash': hash_url(url),
-            'model_type': model_type,
-            'dataset': dataset,
-            'predictions': predictions.tolist() if hasattr(predictions, 'tolist') else predictions,
-            'timestamp': datetime.now().isoformat(),
-            'server_timestamp': db.ServerValue.TIMESTAMP
-        }
-        ref.push(prediction_data)
-        return True
+        url_hash = hash_url(url)
+        
+        # 1. Save static URL info (only if it doesn't exist)
+        url_info_ref = db.reference(f'url_info/{url_hash}')
+        if url_info_ref.get() is None:
+            url_info_ref.set({
+                'url': url,
+                'first_seen_timestamp': datetime.now().isoformat(),
+                'extracted_features': features
+            })
+
+        # 2. Save the new prediction event to history
+        history_ref = db.reference('prediction_history')
+        new_prediction = history_ref.push({
+            'url_hash': url_hash,
+            'prediction_timestamp': datetime.now().isoformat(),
+            'server_timestamp': db.ServerValue.TIMESTAMP,
+            'comparison_results': comparison_results
+        })
+        
+        return new_prediction.key
     except Exception as e:
         logging.error(f"Firebase save error: {e}")
-        return False
+        return None
 
 def get_predictions_from_firebase(limit=50):
-    """Retrieve prediction history from Firebase"""
+    """Retrieve prediction history from the new Firebase structure."""
     try:
         if not firebase_admin._apps:
             return []
 
-        ref = db.reference('predictions')
+        ref = db.reference('prediction_history')
         predictions = ref.order_by_child('server_timestamp').limit_to_last(limit).get()
 
         if predictions:
-            # Convert to list and reverse to show newest first
             prediction_list = []
             for key, value in predictions.items():
                 value['id'] = key
+                url_hash = value.get('url_hash')
+                if url_hash:
+                    url_data = db.reference(f'url_info/{url_hash}/url').get()
+                    value['url'] = url_data or 'URL not found'
                 prediction_list.append(value)
             return list(reversed(prediction_list))
         return []
@@ -62,62 +74,54 @@ def get_predictions_from_firebase(limit=50):
         logging.error(f"Firebase retrieve error: {e}")
         return []
 
+# Page Routes
 @bp.route('/')
 def index():
-    """Main dashboard page"""
     return render_template('index.html')
 
 @bp.route('/quick-prediction')
 def quick_prediction():
-    """Quick prediction page using best model"""
     return render_template('quick_prediction.html')
 
 @bp.route('/multi-model-prediction')
 def multi_model_prediction():
-    """Multi-model comparison page"""
     return render_template('multi_model_prediction.html')
 
 @bp.route('/analysis-dashboard')
 def analysis_dashboard():
-    """Analysis dashboard with metrics"""
     return render_template('analysis_dashboard.html')
 
 @bp.route('/history')
 def history():
-    """Prediction history page"""
     predictions = get_predictions_from_firebase()
     return render_template('history.html', predictions=predictions)
 
 @bp.route('/settings')
 def settings():
-    """Settings page"""
     return render_template('settings.html')
 
 @bp.route('/model-info')
 def model_info():
-    """Model information and metrics page"""
     return render_template('model_info.html')
-
 
 # API Routes
 @bp.route('/api/predict-url', methods=['POST'])
 def predict_url():
-    """Single model prediction endpoint"""
+    """Single model prediction endpoint, updated for the new schema."""
     try:
         data = request.get_json()
-        if not data:
-            return jsonify({'error': 'Invalid JSON'}), 400
+        if not data: return jsonify({'error': 'Invalid JSON'}), 400
 
         url = data.get('url', '').strip()
-        model_type = data.get('model_type', 'cnn')
+        model_type = data.get('model', 'cnn').lower()
         dataset = data.get('dataset', 'dataset_1')
         threshold = float(data.get('threshold', 0.5))
         numerical = data.get('numerical', 'true').lower() == 'true'
 
-        if not url:
-            return jsonify({'error': 'URL không được cung cấp'}), 400
+        if not url: return jsonify({'error': 'URL không được cung cấp'}), 400
 
         predictor = URL_PREDICTOR(url, dataset=dataset)
+        features = predictor.get_features_as_dict()
 
         if model_type == 'cnn':
             predictor.predict_with_CNN(threshold=threshold, numerical=numerical)
@@ -126,126 +130,138 @@ def predict_url():
         elif model_type == 'rf':
             predictor.predict_with_RF(threshold=threshold, numerical=numerical)
         else:
-            return jsonify({'error': 'Loại mô hình không hợp lệ'}), 400
+            return jsonify({'error': 'Mô hình không hợp lệ'}), 400
 
-        # Save prediction to Firebase
-        save_prediction_to_firebase(url, predictor.predictions, model_type, dataset)
+        # Structure the result to be consistent with multi-model endpoint
+        result = {
+            'model_name': model_type.upper(),
+            'predicted_labels': predictor.predicted_labels,
+            'probabilities': predictor.predictions, # Already a list
+            'execution_time_ms': predictor.exec_time
+        }
 
-        return jsonify({
-            'url': url,
-            'model_type': model_type,
-            'dataset': dataset,
-            'threshold': threshold,
-            'numerical': numerical,
-            'predictions': predictor.predictions.tolist() if hasattr(predictor.predictions, 'tolist') else predictor.predictions,
-            'predicted_labels': predictor.predicted_labels.tolist() if hasattr(predictor.predicted_labels, 'tolist') else predictor.predicted_labels,
-            'execution_time': getattr(predictor, 'exec_time', 0),
-            'label_names': predictor.label_names
-        })
+        # Save the single prediction as a list containing one result
+        save_prediction_to_firebase(url, features, [result])
+
+        return jsonify(result)
 
     except Exception as e:
-        logging.error(f"Prediction error: {e}")
+        logging.error(f"Single model prediction error: {e}")
         return jsonify({'error': f'Lỗi dự đoán: {str(e)}'}), 500
-
 
 @bp.route('/api/predict-multi-model', methods=['POST'])
 def predict_multi_model():
-    """Multi-model prediction endpoint"""
+    """Multi-model prediction endpoint, updated for the new schema."""
     try:
         data = request.get_json()
-        if not data:
-            return jsonify({'error': 'Invalid JSON'}), 400
+        if not data: return jsonify({'error': 'Invalid JSON'}), 400
 
         url = data.get('url', '').strip()
         dataset = data.get('dataset', 'dataset_1')
         threshold = float(data.get('threshold', 0.5))
         numerical = data.get('numerical', 'true').lower() == 'true'
 
-        if not url:
-            return jsonify({'error': 'URL không được cung cấp'}), 400
+        if not url: return jsonify({'error': 'URL không được cung cấp'}), 400
 
-        results = {}
+        # Instantiate predictor once for efficiency
+        predictor = URL_PREDICTOR(url, dataset=dataset)
+        features = predictor.get_features_as_dict()
+        
+        comparison_results = []
         model_types = ['cnn', 'xgb', 'rf']
 
         for model_type in model_types:
             try:
-                predictor = URL_PREDICTOR(url, dataset=dataset)
+                if model_type == 'cnn': predictor.predict_with_CNN(threshold=threshold, numerical=numerical)
+                elif model_type == 'xgb': predictor.predict_with_XGB(threshold=threshold, numerical=numerical)
+                elif model_type == 'rf': predictor.predict_with_RF(threshold=threshold, numerical=numerical)
 
-                if model_type == 'cnn':
-                    predictor.predict_with_CNN(threshold=threshold, numerical=numerical)
-                elif model_type == 'xgb':
-                    predictor.predict_with_XGB(threshold=threshold, numerical=numerical)
-                elif model_type == 'rf':
-                    predictor.predict_with_RF(threshold=threshold, numerical=numerical)
-
-                results[model_type] = {
-                    'predictions': predictor.predictions.tolist() if hasattr(predictor.predictions, 'tolist') else predictor.predictions,
-                    'predicted_labels': predictor.predicted_labels.tolist() if hasattr(predictor.predicted_labels, 'tolist') else predictor.predicted_labels,
-                    'execution_time': getattr(predictor, 'exec_time', 0)
-                }
-
-                # Save each model result to Firebase
-                save_prediction_to_firebase(url, predictor.predictions, model_type, dataset)
+                comparison_results.append({
+                    'model_name': model_type.upper(),
+                    'predicted_labels': predictor.predicted_labels,
+                    'probabilities': predictor.predictions, # Already a list
+                    'execution_time_ms': predictor.exec_time
+                })
 
             except Exception as e:
                 logging.error(f"Error with {model_type} model: {e}")
-                results[model_type] = {'error': str(e)}
+                comparison_results.append({'model_name': model_type.upper(), 'error': str(e)})
+
+        if features and comparison_results:
+            save_prediction_to_firebase(url, features, comparison_results)
 
         return jsonify({
             'url': url,
-            'dataset': dataset,
-            'threshold': threshold,
-            'numerical': numerical,
-            'results': results,
-            'label_names': ['benign', 'defacement', 'malware', 'phishing']
+            'comparison_results': comparison_results
         })
 
     except Exception as e:
         logging.error(f"Multi-model prediction error: {e}")
         return jsonify({'error': f'Lỗi dự đoán đa mô hình: {str(e)}'}), 500
 
-
 @bp.route('/api/history')
 def api_history():
-    """API endpoint for prediction history"""
     predictions = get_predictions_from_firebase()
     return jsonify(predictions)
 
-
 @bp.route('/api/stats')
 def api_stats():
-    """API endpoint for statistics"""
+    """API endpoint for detailed statistics from the new database structure."""
     try:
-        predictions = get_predictions_from_firebase(limit=1000)
+        history_ref = db.reference('prediction_history')
+        predictions = history_ref.get()
 
-        total_predictions = len(predictions)
+        total_predictions = len(predictions) if predictions else 0
         safe_count = 0
-        malicious_count = 0
+        phishing_count = 0
+        defacement_count = 0
+        malware_count = 0
 
-        for pred in predictions:
-            if 'predicted_labels' in pred:
-                labels = pred['predicted_labels']
-                # If benign label (index 0) is 1 and others are 0, it's safe
-                if isinstance(labels, list) and len(labels) >= 4:
-                    if labels[0] == 1 and sum(labels[1:]) == 0:
-                        safe_count += 1
-                    else:
-                        malicious_count += 1
+        for pred_id, pred_data in predictions.items():
+            # Determine which set of labels to use (multi-model vs. single)
+            labels = {}
+            if pred_data.get('comparison_results'):
+                # Use the first model's result for simplicity in stats
+                first_result = pred_data['comparison_results'][0]
+                labels = first_result.get('predicted_labels', {})
+            elif pred_data.get('predicted_labels'):
+                labels = pred_data.get('predicted_labels', {})
+
+            # Correctly count each category based on its specific label
+            if labels.get('benign') == 1:
+                safe_count += 1
+            if labels.get('phishing') == 1:
+                phishing_count += 1
+            if labels.get('defacement') == 1:
+                defacement_count += 1
+            if labels.get('malware') == 1:
+                malware_count += 1
+
+        malicious_count = phishing_count + defacement_count + malware_count
+
+        # Simple change calculation (dummy)
+        safe_change = "+5%"
+        malicious_change = "+10%"
+        predictions_change = "+20%"
+        time_change = "+30%"
 
         return jsonify({
+            'total_safe': safe_count,
+            'total_malicious': malicious_count,
             'total_predictions': total_predictions,
-            'safe_count': safe_count,
-            'malicious_count': malicious_count,
-            'models_used': {
-                'cnn': len([p for p in predictions if p.get('model_type') == 'cnn']),
-                'xgb': len([p for p in predictions if p.get('model_type') == 'xgb']),
-                'rf': len([p for p in predictions if p.get('model_type') == 'rf'])
-            }
+            'avg_response_time': 0, # Placeholder
+            'safe_change': safe_change,
+            'malicious_change': malicious_change,
+            'predictions_change': predictions_change,
+            'time_change': time_change,
+            'phishing_count': phishing_count,
+            'defacement_count': defacement_count,
+            'malware_count': malware_count
         })
-    except Exception as e:
-        logging.error(f"Stats error: {e}")
-        return jsonify({'error': str(e)}), 500
 
+    except Exception as e:
+        print(f"Error fetching stats: {e}")
+        return jsonify({'error': str(e)}), 500
 
 # Error handlers
 @bp.app_errorhandler(404)
@@ -254,4 +270,5 @@ def not_found_error(error):
 
 @bp.app_errorhandler(500)
 def internal_error(error):
+    db.session.rollback()
     return render_template('500.html'), 500

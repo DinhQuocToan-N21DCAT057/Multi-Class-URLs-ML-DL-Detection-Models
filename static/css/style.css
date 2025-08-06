@@ -37,11 +37,9 @@ body {
     box-shadow: var(--shadow-light);
     padding: 2rem;
     margin-bottom: 2rem;
-    transition: all 0.3s ease;
 }
 
 .glass-card:hover {
-    transform: translateY(-5px);
     box-shadow: var(--shadow-heavy);
 }
 
@@ -68,14 +66,12 @@ body {
     padding: 0.5rem 1rem !important;
     margin: 0 0.25rem;
     border-radius: 10px;
-    transition: all 0.3s ease;
     position: relative;
 }
 
 .nav-link:hover {
     color: var(--text-primary) !important;
     background: rgba(255, 255, 255, 0.2);
-    transform: translateY(-2px);
 }
 
 .nav-link.active {
@@ -118,13 +114,11 @@ body {
     border-radius: 15px;
     text-decoration: none;
     color: var(--text-primary);
-    transition: all 0.3s ease;
     border: 1px solid var(--glass-border);
     height: 100%;
 }
 
 .action-card:hover {
-    transform: translateY(-5px);
     box-shadow: var(--shadow-medium);
     color: var(--text-primary);
     text-decoration: none;
@@ -213,11 +207,9 @@ body {
     border-radius: 15px;
     border: 1px solid var(--glass-border);
     height: 100%;
-    transition: all 0.3s ease;
 }
 
 .model-card:hover {
-    transform: translateY(-5px);
     box-shadow: var(--shadow-medium);
 }
 
@@ -246,7 +238,6 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.3);
     border-radius: 10px;
     padding: 0.75rem 1rem;
-    transition: all 0.3s ease;
     backdrop-filter: blur(5px);
 }
 
@@ -280,7 +271,6 @@ body {
     border-radius: 10px;
     padding: 0.75rem 1.5rem;
     font-weight: 600;
-    transition: all 0.3s ease;
     border: none;
     position: relative;
     overflow: hidden;
@@ -292,9 +282,8 @@ body {
 }
 
 .btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-medium);
     color: white;
+    box-shadow: var(--shadow-medium);
 }
 
 .btn-outline-primary {
@@ -306,7 +295,6 @@ body {
 .btn-outline-primary:hover {
     background: var(--primary-gradient);
     color: white;
-    transform: translateY(-2px);
 }
 
 .btn-lg {
@@ -370,7 +358,6 @@ body {
     border: 1px solid var(--glass-border);
     padding: 1.5rem;
     height: 100%;
-    transition: all 0.3s ease;
 }
 
 .model-result-card.safe {
@@ -433,13 +420,7 @@ body {
     border: 1px solid var(--glass-border);
     padding: 1.5rem;
     text-align: center;
-    transition: all 0.3s ease;
     height: 100%;
-}
-
-.metric-card:hover {
-    transform: translateY(-5px);
-    box-shadow: var(--shadow-medium);
 }
 
 .metric-card.safe {
@@ -651,12 +632,10 @@ body {
     padding: 1.5rem;
     text-align: center;
     height: 100%;
-    transition: all 0.3s ease;
     cursor: pointer;
 }
 
 .model-overview-card:hover {
-    transform: translateY(-5px);
     box-shadow: var(--shadow-medium);
 }
 

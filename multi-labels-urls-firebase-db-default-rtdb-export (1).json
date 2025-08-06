@@ -1,0 +1,185 @@
+{
+  "urls": {
+    "0f115db062b7c0dd030b16878c99dea5c354b49dc37b38eb8846179c7783e9d7": {
+      "extracted_features": {
+        "avg_word_raw_host_len": 6.333333333333333,
+        "avg_word_raw_len": 6.5,
+        "avg_word_raw_path_len": 7,
+        "body_len": 26674,
+        "char_repeat": 2,
+        "dns_record": 0,
+        "domain_age": 12510,
+        "domain_reg_len": 274,
+        "empty_title": 0,
+        "entropy": -3.709887326294787,
+        "google_index": 1,
+        "has_abnormal_subdomain": 0,
+        "has_copyright_domain": 0,
+        "has_domain_in_brand": 0,
+        "has_ex_favicon": 1,
+        "has_https": 0,
+        "has_ip": 0,
+        "has_login_form": 0,
+        "has_path_exe_extension": 1,
+        "has_port": 0,
+        "has_prefix_suffix": 0,
+        "has_short_svc": 0,
+        "has_statistical_report": 0,
+        "has_sus_tld": 1,
+        "has_tld_in_path": 0,
+        "has_tld_in_subdomain": 0,
+        "hostname_len": 21,
+        "is_alive": 1,
+        "longest_word_raw_host_len": 9,
+        "longest_word_raw_len": 9,
+        "longest_word_raw_path_len": 9,
+        "nb_and": 0,
+        "nb_colon": 1,
+        "nb_com": 1,
+        "nb_dots": 2,
+        "nb_equal": 0,
+        "nb_ex_css": 0,
+        "nb_exclamation": 0,
+        "nb_http_token": 0,
+        "nb_hyperlinks": 23,
+        "nb_hyphens": 0,
+        "nb_imgs": 1,
+        "nb_percentage": 0,
+        "nb_phish_hints": 0,
+        "nb_semicolumn": 0,
+        "nb_slash": 3,
+        "nb_space": 0,
+        "nb_special_char": 5554,
+        "nb_subdomain": 2,
+        "nb_tilde": 0,
+        "nb_titles": 0,
+        "nb_underscore": 0,
+        "nb_www": 0,
+        "page_rank": -1,
+        "percent_ex_media": 0,
+        "percent_in_links": 92.3076923076923,
+        "percent_in_media": 0,
+        "percent_safe_anchor": 100,
+        "ratio_body_special_chars": 0.2082177401214666,
+        "ratio_digits_host": 0,
+        "ratio_digits_url": 0,
+        "ratio_in_hyperlinks": 0.9565217391304348,
+        "ratio_script_body": 0.9763065157081803,
+        "ratio_script_special_chars": 4.688872884407634,
+        "script_len": 26042,
+        "shortest_word_raw_host_len": 3,
+        "shortest_word_raw_len": 3,
+        "shortest_word_raw_path_len": 7,
+        "url_len": 37,
+        "whois_reg_domain": 0,
+        "word_raw_len": 4
+      },
+      "prediction_id": "unique_prediction_id_here",
+      "predictions": {
+        "cnn": {
+          "non_numerical_features": {
+            "model_path": "models/dataset_1/CNN_MODEL_ON_NON_NUMERICAL_FEATURES.keras",
+            "predicted_labels": [
+              1,
+              0,
+              0,
+              0
+            ],
+            "probabilities": [
+              0.87,
+              0.11,
+              0.01,
+              0.01
+            ],
+            "threshold_used": 0.5
+          },
+          "numerical_features": {
+            "model_path": "models/dataset_1/CNN_MODEL_ON_NUMERICAL_FEATURES.keras",
+            "predicted_labels": [
+              1,
+              0,
+              0,
+              0
+            ],
+            "probabilities": [
+              0.9,
+              0.08,
+              0.01,
+              0.01
+            ],
+            "threshold_used": 0.5
+          }
+        },
+        "random_forest": {
+          "non_numerical_features": {
+            "model_path": "models/dataset_1/RF_MODEL_ON_NON_NUMERICAL_FEATURES.pkl",
+            "predicted_labels": [
+              1,
+              0,
+              0,
+              0
+            ],
+            "probabilities": [
+              0.82,
+              0.15,
+              0.02,
+              0.01
+            ],
+            "threshold_used": 0.5
+          },
+          "numerical_features": {
+            "model_path": "models/dataset_1/RF_MODEL_ON_NUMERICAL_FEATURES.pkl",
+            "predicted_labels": [
+              1,
+              0,
+              0,
+              0
+            ],
+            "probabilities": [
+              0.85,
+              0.12,
+              0.02,
+              0.01
+            ],
+            "threshold_used": 0.5
+          }
+        },
+        "xgboost": {
+          "non_numerical_features": {
+            "model_path": "models/dataset_1/XGB_MODEL_ON_NON_NUMERICAL_FEATURES.pkl",
+            "predicted_labels": [
+              1,
+              0,
+              0,
+              0
+            ],
+            "probabilities": [
+              0.85,
+              0.12,
+              0.02,
+              0.01
+            ],
+            "threshold_used": 0.5
+          },
+          "numerical_features": {
+            "model_path": "models/dataset_1/XGB_MODEL_ON_NUMERICAL_FEATURES.pkl",
+            "predicted_labels": [
+              1,
+              0,
+              0,
+              0
+            ],
+            "probabilities": [
+              0.88,
+              0.1,
+              0.01,
+              0.01
+            ],
+            "threshold_used": 0.5
+          }
+        }
+      },
+      "url": "https://example.com/"
+    }
+  }
+}
