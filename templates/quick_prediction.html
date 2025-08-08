@@ -52,11 +52,10 @@
                                    value="50">
                         </div>
                         <div class="col-md-6">
-                            <label for="datasetSelect" class="form-label">Dataset</label>
-                            <select class="form-select" id="datasetSelect">
-                                <option value="dataset_1">Dataset 1</option>
-                                <option value="dataset_2">Dataset 2</option>
-                                <option value="dataset_3">Dataset 3</option>
+                            <label for="featureTypeSelect" class="form-label">Loại đặc trưng</label>
+                            <select class="form-select" id="featureTypeSelect">
+                                <option value="lexical">Lexical</option>
+                                <option value="numerical">Numerical</option>
                             </select>
                         </div>
                     </div>
@@ -109,10 +108,6 @@
                                     <small class="text-muted">Thời gian xử lý:</small>
                                     <div id="executionTime"></div>
                                 </div>
-                                <div class="info-item">
-                                    <small class="text-muted">Dataset:</small>
-                                    <div id="usedDataset"></div>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -143,10 +138,9 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function performQuickPrediction() {
-    const form = document.getElementById('quickPredictionForm');
     const url = document.getElementById('urlInput').value;
+    const featureType = document.getElementById('featureTypeSelect').value;
     const model = document.getElementById('modelSelect').value;
-    const dataset = document.getElementById('datasetSelect').value; // Kept for data consistency
 
     if (!url) {
         showAlert('Vui lòng nhập URL.', 'warning');
@@ -161,7 +155,11 @@ function performQuickPrediction() {
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ url: url, model_type: model, dataset: dataset })
+        body: JSON.stringify({ 
+            url: url, 
+            numerical: featureType === 'numerical',
+            model: model
+        }),
     })
     .then(response => {
         if (!response.ok) {
@@ -170,28 +168,41 @@ function performQuickPrediction() {
         return response.json();
     })
     .then(data => {
+        hideLoading();
+
+        // **Definitive Error Handling**
+
+        // 1. Check for a top-level API error (e.g., invalid input)
         if (data.error) {
-            showAlert(data.error, 'danger');
-        } else {
-            // The API returns comparison_results, which is an array. For single prediction, we take the first element.
-            const result = data.comparison_results[0];
-            if (result.error) {
-                showAlert(`Lỗi từ mô hình ${result.model_name}: ${result.error}`, 'danger');
-            } else {
-                displayResults(result, data.url, dataset);
-            }
+            showAlert(`Có lỗi xảy ra khi phân tích URL: ${data.error}`, 'danger');
+            return;
         }
+
+        // 2. Validate the expected flat data structure from the API
+        if (!data.model_name) { 
+            showAlert('Phản hồi từ máy chủ không hợp lệ. Dữ liệu không đầy đủ.', 'danger');
+            return;
+        }
+
+        const result = data; 
+
+        // 3. Check for an error within the specific model's result
+        if (result.error) {
+            showAlert(`Lỗi từ mô hình ${result.model_name}: ${result.error}`, 'danger');
+            return;
+        }
+
+        // 4. If all checks pass, display the results
+        displayResults(result, data.url);
     })
     .catch(error => {
-        showAlert('Có lỗi xảy ra khi phân tích URL: ' + error.message, 'danger');
+        hideLoading();
         console.error('Error:', error);
-    })
-    .finally(() => {
-        document.getElementById('loadingSection').style.display = 'none';
+        showAlert('Không thể kết nối hoặc xử lý yêu cầu. Vui lòng kiểm tra lại kết nối mạng.', 'danger');
     });
 }
 
-function displayResults(result, url, dataset) {
+function displayResults(result, url) {
     const resultsSection = document.getElementById('resultsSection');
     const overallAssessment = document.getElementById('overallAssessment');
     const predictionBars = document.getElementById('predictionBars');
@@ -242,10 +253,13 @@ function displayResults(result, url, dataset) {
     // Update execution info
     document.getElementById('usedModel').textContent = result.model_name.toUpperCase();
     document.getElementById('executionTime').textContent = (result.execution_time_ms / 1000).toFixed(3) + 's';
-    document.getElementById('usedDataset').textContent = dataset;
     
     // Show results
     resultsSection.style.display = 'block';
+}
+
+function hideLoading() {
+    document.getElementById('loadingSection').style.display = 'none';
 }
 
 function showAlert(message, type) {

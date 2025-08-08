@@ -108,7 +108,14 @@ class URL_EXTRACTOR(object):
         self.label = label
         self.p = urlparse(self.url)
         self.pq = None
-        self.extracted = tldextract.extract(self.url)
+
+        # Set a writable cache path for tldextract to resolve the warning
+        tld_cache_path = os.path.join(BASE_DIR, ".tld_cache")
+        # Instantiate TLDExtract with the cache directory
+        extract = tldextract.TLDExtract(cache_dir=tld_cache_path)
+        # Call the instance to extract the URL parts
+        self.extracted = extract(self.url)
+
         self.headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         }
@@ -977,7 +984,7 @@ class URL_EXTRACTOR(object):
         return self.url.count("|")
 
     #######################################################################################
-    #                         1.25 Path entension != .txt/.exe                            #
+    #                          1.25 Path entension != .txt/.exe                            #
     #######################################################################################
 
     @timer
@@ -2238,19 +2245,9 @@ class URL_EXTRACTOR(object):
     @timer
     @deadline(3)
     def global_rank(self):
-        if self.domain in URL_EXTRACTOR.global_rank_cache:
-            return URL_EXTRACTOR.global_rank_cache[self.domain]
-        rank_checker_response = requests.post(
-            "https://www.checkpagerank.net/index.php", {"name": self.domain}
-        )
-        try:
-            rank = int(
-                re.findall(r"Global Rank: ([0-9]+)", rank_checker_response.text)[0]
-            )
-        except:
-            rank = -1
-        URL_EXTRACTOR.global_rank_cache[self.domain] = rank
-        return rank
+        # This feature is deprecated due to the unreliability of the external service.
+        # It now returns a default value to prevent application crashes.
+        return -1
 
     #######################################################################################
     #                                 3.7 Google index                                    #
@@ -2306,19 +2303,9 @@ class URL_EXTRACTOR(object):
     @timer
     @deadline(3)
     def page_rank(self):
-        if self.domain in URL_EXTRACTOR.page_rank_cache:
-            return URL_EXTRACTOR.page_rank_cache[self.domain]
-        rank_checker_response = requests.post(
-            "https://www.checkpagerank.net/index.php", {"name": self.domain}
-        )
-        try:
-            rank = int(
-                re.findall(r"Global Rank: ([0-9]+)", rank_checker_response.text)[0]
-            )
-        except:
-            rank = -1
-        URL_EXTRACTOR.page_rank_cache[self.domain] = rank
-        return rank
+        # This feature is deprecated due to the unreliability of the external service.
+        # It now returns a default value to prevent application crashes.
+        return -1
 
     #######################################################################################
     #  _____     __   ____ ___  __  __ ____ ___ _   _ _____   URL's Features: 59          #
@@ -2414,7 +2401,6 @@ class URL_EXTRACTOR(object):
             ("has_right_click", self.has_right_click),
             ("has_copyright_domain", self.has_domain_with_copyright),
             ("ratio_in_hyperlinks", self.ratio_internal_hyperlinks),
-            ("ratio_ex_hyperlinks", self.ratio_external_hyperlinks),
             ("ratio_script_special_chars", self.ratio_script_to_special_chars),
             ("ratio_script_body", self.ratio_script_to_body),
             ("ratio_body_special_chars", self.ratio_body_to_special_char),

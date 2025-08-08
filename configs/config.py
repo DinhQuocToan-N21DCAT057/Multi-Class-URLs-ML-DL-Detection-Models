@@ -11,7 +11,7 @@ class Config:
 
     # Model configuration
     DEFAULT_DATASET = os.environ.get('DEFAULT_DATASET', 'dataset_1')
-    DEFAULT_MODEL_TYPE = os.environ.get('DEFAULT_MODEL_TYPE', 'cnn')
+    DEFAULT_MODEL_NAME = os.environ.get('DEFAULT_MODEL_NAME', 'cnn')
     DEFAULT_THRESHOLD = float(os.environ.get('DEFAULT_THRESHOLD', '0.5'))
 
     # Application settings

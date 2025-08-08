@@ -1,70 +1,83 @@
-import os
-import numpy as np
-import pandas as pd
-import nltk
-import re
-import joblib
 import time
-
+import os
+import pandas as pd
+import numpy as np
+import joblib
 from tensorflow.keras.models import load_model
 from scripts.url_features_extractor import URL_EXTRACTOR
-from sklearn.preprocessing import MinMaxScaler
-from nltk.corpus import stopwords
-from nltk.stem import PorterStemmer
+import logging
 
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "."))
+# Get the absolute path of the script's directory to ensure robust file loading
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-
-class URL_PREDICTOR(object):
-    def __init__(self, url, dataset="dataset_1"):
+class URL_PREDICTOR:
+    def __init__(self, url, enable_logging=False):
         self.url = url
-        self.dataset = dataset
-        self.CNN_NUMERICAL_MODEL_PATH = os.path.join(BASE_DIR, "models", f"{self.dataset}",
-                                                     "CNN_MODEL_ON_NUMERICAL_FEATURES.keras")
-        self.CNN_NON_NUMERICAL_MODEL_PATH = os.path.join(BASE_DIR, "models", f"{self.dataset}",
-                                                         "CNN_MODEL_ON_NON_NUMERICAL_FEATURES.keras")
-        self.XGB_NUMERICAL_MODEL_PATH = os.path.join(BASE_DIR, "models", f"{self.dataset}",
-                                                     "XGB_MODEL_ON_NUMERICAL_FEATURES.pkl")
-        self.XGB_NON_NUMERICAL_MODEL_PATH = os.path.join(BASE_DIR, "models", f"{self.dataset}",
-                                                         "XGB_MODEL_ON_NON_NUMERICAL_FEATURES.pkl")
-        self.RF_NUMERICAL_MODEL_PATH = os.path.join(BASE_DIR, "models", f"{self.dataset}",
-                                                    "RF_MODEL_ON_NUMERICAL_FEATURES.pkl")
-        self.RF_NON_NUMERICAL_MODEL_PATH = os.path.join(BASE_DIR, "models", f"{self.dataset}",
-                                                        "RF_MODEL_ON_NON_NUMERICAL_FEATURES.pkl")
-        self.SCALER_PATH = os.path.join(BASE_DIR, "models", f"{self.dataset}", "scaler.pkl")
-        self.CNN_VECTORIZER_PATH = os.path.join(BASE_DIR, "models", f"{self.dataset}", "tfidf_vectorizer_CNN.pkl")
-        self.XGB_RF_VECTORIZER_PATH = os.path.join(BASE_DIR, "models", f"{self.dataset}", "tfidf_vectorizer_XGB_RF.pkl")
+        self.exec_time = 0.0
+        self.log_level = logging.INFO if enable_logging else logging.WARNING
+        logging.getLogger().setLevel(self.log_level)
+
+        # Dataset and model paths
+        self.dataset = 'dataset_1' 
+        # Correctly go up one directory from 'scripts' to the project root
+        self.base_model_path = os.path.join(
+            os.path.dirname(__file__), "..", "models", self.dataset
+        )
+
+        # Check for model files and set up paths
+        self.SCALER_PATH = os.path.join(self.base_model_path, "scaler.pkl")
+        self.CNN_NUMERICAL_MODEL_PATH = os.path.join(self.base_model_path, "CNN_MODEL_ON_NUMERICAL_FEATURES.keras")
+        self.CNN_NON_NUMERICAL_MODEL_PATH = os.path.join(self.base_model_path, "CNN_MODEL_ON_NON_NUMERICAL_FEATURES.keras")
+        self.XGB_NUMERICAL_MODEL_PATH = os.path.join(self.base_model_path, "XGB_MODEL_ON_NUMERICAL_FEATURES.pkl")
+        self.XGB_NON_NUMERICAL_MODEL_PATH = os.path.join(self.base_model_path, "XGB_MODEL_ON_NON_NUMERICAL_FEATURES.pkl")
+        self.RF_NUMERICAL_MODEL_PATH = os.path.join(self.base_model_path, "RF_MODEL_ON_NUMERICAL_FEATURES.pkl")
+        self.RF_NON_NUMERICAL_MODEL_PATH = os.path.join(self.base_model_path, "RF_MODEL_ON_NON_NUMERICAL_FEATURES.pkl")
+        self.CNN_VECTORIZER_PATH = os.path.join(self.base_model_path, "tfidf_vectorizer_CNN.pkl")
+        self.XGB_RF_VECTORIZER_PATH = os.path.join(self.base_model_path, "tfidf_vectorizer_XGB_RF.pkl")
         
         # Load scaler once during initialization
         self.scaler = self.load_scaler()
 
-        self.df = self.extract_url_features_to_df()
-        self.y = self.df['label'] if 'label' in self.df.columns else None
-        self.ps = PorterStemmer()
-        self.corpus = []
-        self.label_names = ['benign', 'defacement', 'malware', 'phishing']
-        self.predictions = None
-        self.predicted_labels = None
+        # Initialize attributes
+        self.label_names = ['phishing', 'defacement', 'malware', 'benign']
+        self.predictions = []
+        self.predicted_labels = {}
         self.exec_time = 0
 
-    def get_features_as_dict(self):
-        """Returns the extracted features as a dictionary."""
-        if self.df is not None:
-            # Convert dataframe to dict, excluding non-feature columns
-            features_dict = self.df.drop(columns=['label', 'url'], errors='ignore').to_dict(orient='records')
-            return features_dict[0] if features_dict else {}
-        return {}
+    def load_scaler(self):
+        """Loads the scaler from the specified path."""
+        try:
+            return joblib.load(self.SCALER_PATH)
+        except FileNotFoundError:
+            print(f"Scaler not found at {self.SCALER_PATH}. Numerical predictions will not be scaled.")
+            return None
+        except Exception as e:
+            print(f"Error loading scaler: {e}")
+            return None
 
-    def _format_predictions(self, predictions, threshold):
-        """Formats raw model predictions into the required structure."""
-        # Handle multi-label array from scikit-learn
-        if isinstance(predictions, list) and len(predictions) == len(self.label_names):
-            # This is likely from a multi-output classifier, stack the probabilities for the positive class
-            predictions = np.stack([p[:, 1] if p.shape[1] > 1 else p.flatten() for p in predictions], axis=1)
+    def _format_predictions(self, predictions, threshold=0.5):
+        # Ensure predictions are a flat list or array of probabilities
+        if isinstance(predictions, list) and len(predictions) > 0 and isinstance(predictions[0], list):
+            predictions = predictions[0]
 
-        self.predictions = predictions.flatten().tolist()
-        binary_labels = (predictions.flatten() > threshold).astype(int)
-        self.predicted_labels = {label: int(pred) for label, pred in zip(self.label_names, binary_labels) if pred == 1}
+        predicted_labels = {label: 0 for label in self.label_names}
+        has_malicious_label = False
+
+        # Assumes the order is [phishing, defacement, malware]
+        # The 'benign' label is handled by exclusion.
+        malicious_labels = ['phishing', 'defacement', 'malware']
+        for i, label in enumerate(malicious_labels):
+            if predictions[i] >= threshold:
+                predicted_labels[label] = 1
+                has_malicious_label = True
+
+        # If no malicious labels were assigned, mark it as benign
+        if not has_malicious_label:
+            predicted_labels['benign'] = 1
+
+        self.predicted_labels = predicted_labels
+        # Ensure self.predictions is a simple list of floats for JSON serialization
+        self.predictions = [float(p) for p in predictions]
 
     def predict_with_RF(self, threshold=0.5, numerical=True):
         start_time = time.time()
@@ -73,23 +86,14 @@ class URL_PREDICTOR(object):
         
         if numerical:
             data = self.X1_pre_processing()
+            if self.scaler:
+                data = self.scaler.transform(data)
         else:
-            data = self.X4_pre_processing()
+            data = self.X2_pre_processing(self.XGB_RF_VECTORIZER_PATH)
 
-        raw_predictions = model.predict_proba(data)
-        self._format_predictions(raw_predictions, threshold)
-        
-        # If the prediction is benign, it's already correctly set.
-        # Otherwise, filter for the specific model's labels.
-        if 'benign' in self.predicted_labels:
-            final_labels = {'benign': 1}
-        else:
-            final_labels = {label: self.predicted_labels.get(label, 0) for label in self.label_names}
-
-        self.predicted_labels = final_labels
-        
-        end_time = time.time()
-        self.exec_time = (end_time - start_time) * 1000 # Convert to ms
+        predictions = model.predict_proba(data)[0] # Get probabilities for the first (only) sample
+        self.exec_time = round((time.time() - start_time) * 1000, 4)
+        self._format_predictions(predictions, threshold)
 
     def predict_with_CNN(self, threshold=0.5, numerical=True):
         start_time = time.time()
@@ -98,23 +102,18 @@ class URL_PREDICTOR(object):
 
         if numerical:
             data = self.X1_pre_processing()
+            if self.scaler:
+                data = self.scaler.transform(data)
+            # Reshape data for Conv1D layer: (batch_size, timesteps, features)
+            data = np.expand_dims(data, axis=2)
         else:
-            data = self.X2_pre_processing()
+            data = self.X2_pre_processing(self.CNN_VECTORIZER_PATH)
+            data = data.toarray()
+            data = np.expand_dims(data, axis=2)
 
-        raw_predictions = model.predict(data)
-        self._format_predictions(raw_predictions, threshold)
-        
-        # If the prediction is benign, it's already correctly set.
-        # Otherwise, filter for the specific model's labels.
-        if 'benign' in self.predicted_labels:
-            final_labels = {'benign': 1}
-        else:
-            final_labels = {label: self.predicted_labels.get(label, 0) for label in self.label_names}
-
-        self.predicted_labels = final_labels
-        
-        end_time = time.time()
-        self.exec_time = (end_time - start_time) * 1000 # Convert to ms
+        predictions = model.predict(data)[0]
+        self.exec_time = round((time.time() - start_time) * 1000, 4)
+        self._format_predictions(predictions, threshold)
 
     def predict_with_XGB(self, threshold=0.5, numerical=True):
         start_time = time.time()
@@ -123,142 +122,51 @@ class URL_PREDICTOR(object):
 
         if numerical:
             data = self.X1_pre_processing()
+            if self.scaler:
+                data = self.scaler.transform(data)
         else:
-            data = self.X4_pre_processing()
+            data = self.X2_pre_processing(self.XGB_RF_VECTORIZER_PATH)
 
-        raw_predictions = model.predict_proba(data)
-        self._format_predictions(raw_predictions, threshold)
-        
-        # If the prediction is benign, it's already correctly set.
-        # Otherwise, filter for the specific model's labels.
-        if 'benign' in self.predicted_labels:
-            final_labels = {'benign': 1}
-        else:
-            final_labels = {label: self.predicted_labels.get(label, 0) for label in self.label_names}
-
-        self.predicted_labels = final_labels
-        
-        end_time = time.time()
-        self.exec_time = (end_time - start_time) * 1000 # Convert to ms
-
-    def print_result(self):
-        if self.predictions is not None and self.predicted_labels is not None:
-            for i, (pred, prob) in enumerate(zip(self.predicted_labels, self.predictions)):
-                print(f"\nSample {i + 1} - Url: {self.url}")
-                for label, p, pl in zip(self.label_names, prob, pred):
-                    print(f"{label}: Probability = {p:.4f}, Predicted = {bool(pl)}")
-                if self.y is not None:
-                    true_label = self.y.iloc[i]
-                    print(f"True label: {true_label}")
-            print(f"\tExecution Time: {self.exec_time:.2f} ms")
+        predictions = model.predict_proba(data)[0]
+        self.exec_time = round((time.time() - start_time) * 1000, 4)
+        self._format_predictions(predictions, threshold)
 
     def X1_pre_processing(self):
-        X1 = self.df.drop(columns=['label', 'url'], errors='ignore')
-        if self.scaler:
-            X1 = self.scaler.transform(X1)
-        return X1
-
-    def load_scaler(self):
+        """Pre-processes the URL for numerical feature extraction."""
         try:
-            if os.path.exists(self.SCALER_PATH):
-                scaler = joblib.load(self.SCALER_PATH)
-                print(f"Scaler loaded successfully from {self.SCALER_PATH}")
-                return scaler
-            else:
-                print(f"Scaler not found at {self.SCALER_PATH}. Numerical predictions will not be scaled.")
-                return None
+            feature_extractor = URL_EXTRACTOR(self.url)
+            features_dict = feature_extractor.extract_to_predict()
+
+            # Remove features not used in the trained model to prevent mismatch
+            unused_features = [
+                'url', 'label', 'domain_reg_len', 'domain_age',
+                'google_index', 'page_rank'
+            ]
+            for feature in unused_features:
+                if feature in features_dict:
+                    del features_dict[feature]
+
+            return pd.DataFrame([features_dict])
         except Exception as e:
-            print(f"Error loading scaler: {e}. Numerical predictions will not be scaled.")
-            return None
-
-    def X2_pre_processing(self):
-        X2 = self.df['url']
-        self.albumentations(X2)
-        self.load_vectorizer(self.CNN_VECTORIZER_PATH)
-        X2 = self.cv.transform(self.corpus).toarray()
-        X2 = np.reshape(X2, (X2.shape[0], X2.shape[1], 1))
-        return X2
-
-    def load_vectorizer(self, PATH):
-        try:
-            if os.path.exists(PATH):
-                self.cv = joblib.load(PATH)
-                print(f"{PATH} loaded successfully!")
-            else:
-                # Create a default vectorizer if not found
-                from sklearn.feature_extraction.text import TfidfVectorizer
-                self.cv = TfidfVectorizer(max_features=1000)
-                print(f"Vectorizer not found at {PATH}, using default TfidfVectorizer")
-        except Exception as e:
-            print(f"Error loading {PATH}: {e}")
-            # Use default vectorizer
-            from sklearn.feature_extraction.text import TfidfVectorizer
-            self.cv = TfidfVectorizer(max_features=1000)
-
-    def X3_pre_processing(self):
-        # This method is redundant now. X1_pre_processing handles numerical features.
-        return self.X1_pre_processing()
-
-    def X4_pre_processing(self):
-        X4 = self.df['url']
-        self.corpus = [] # Reset corpus for each call
-        self.albumentations2(X4)
-        self.load_vectorizer(self.XGB_RF_VECTORIZER_PATH)
-        X4 = self.cv.transform(self.corpus).toarray()
-        return X4
-
-    @staticmethod
-    def download_stopsword():
-        try:
-            print("Check nltk's stopwords")
-            stopwords.words("english")
-        except LookupError:
-            print("ntlk's stopwords not found! Downloading NLTK stopwords...")
-            nltk.download('stopwords')
-
-    def albumentations(self, X):
-        self.download_stopsword()
-        for i in range(len(X)):
-            review = X.iloc[i] if hasattr(X, 'iloc') else X[i]
-            review = review.decode('utf-8') if isinstance(review, bytes) else str(review)
-            review = re.sub(r'\?.*', '', review)
-            review = re.sub(r'[^a-zA-Z0-9\-\/.]', ' ', review)
-            review = review.lower()
-            review = review.split()
-            review = [self.ps.stem(word) for word in review if word not in set(stopwords.words("english"))]
-            review = " ".join(review)
-            self.corpus.append(review)
-
-    def albumentations2(self, X):
-        self.download_stopsword()
-        for i in range(len(X)):
-            review = X.iloc[i] if hasattr(X, 'iloc') else X[i]
-            review = review.decode('utf-8') if isinstance(review, bytes) else str(review)
-            review = re.sub(r'\?.*', '', review)
-            review = re.sub(r'[^a-zA-Z0-9\-\/.]', ' ', review)
-            review = review.lower()
-            review = review.split()
-            review = [self.ps.stem(word) for word in review if
-                      word not in set(stopwords.words("english")) and len(word) > 2]
-            review = " ".join(review)
-            self.corpus.append(review)
-
-    def extract_url_features_to_df(self):
-        df = []
-        try:
-            extractor = URL_EXTRACTOR(self.url)
-            data = extractor.extract_to_predict()
-            print(f"  URL '{self.url}' took {round(extractor.exec_time, 2)} seconds to extract")
-            df.append(data)
-        except Exception as e:
-            print(f"Error extracting features: {e}")
+            print(f"Error during X1 pre-processing: {e}")
             raise
-        return pd.DataFrame(df)
+
+    def X2_pre_processing(self, vectorizer_path):
+        """Pre-processes the URL for lexical feature extraction."""
+        try:
+            feature_extractor = URL_EXTRACTOR(self.url)
+            url_string = feature_extractor.url
+            vectorizer = joblib.load(vectorizer_path)
+            return vectorizer.transform([url_string])
+        except Exception as e:
+            print(f"Error during X2 pre-processing: {e}")
+            raise
 
     def model_loader(self, PATH):
         """Loads a model from the given path."""
         try:
-            if "keras" in PATH:
+            print(f"Attempting to load model from: {PATH}")
+            if PATH.endswith('.keras'):
                 model = load_model(PATH)
             else:
                 model = joblib.load(PATH)

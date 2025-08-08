@@ -221,3 +221,4 @@ cython_debug/
 
 # Firebase credentials
 configs/firebase-credentials.json
+.early.coverage

@@ -40,12 +40,13 @@
                                    max="90" 
                                    value="50">
                         </div>
+                    </div>
+                    <div class="row mb-4">
                         <div class="col-md-3">
-                            <label for="datasetSelect" class="form-label">Dataset</label>
-                            <select class="form-select" id="datasetSelect">
-                                <option value="dataset_1">Dataset 1</option>
-                                <option value="dataset_2">Dataset 2</option>
-                                <option value="dataset_3">Dataset 3</option>
+                            <label for="featureTypeSelect" class="form-label">Loại đặc trưng</label>
+                            <select class="form-select" id="featureTypeSelect">
+                                <option value="lexical">Lexical</option>
+                                <option value="numerical">Numerical</option>
                             </select>
                         </div>
                     </div>
@@ -169,7 +170,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function performMultiModelPrediction() {
     const url = document.getElementById('urlInput').value;
-    const dataset = document.getElementById('datasetSelect').value;
+    const featureType = document.getElementById('featureTypeSelect').value;
 
     if (!url) {
         showAlert('Vui lòng nhập URL.', 'warning');
@@ -182,7 +183,10 @@ function performMultiModelPrediction() {
     fetch('/api/predict-multi-model', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: url, dataset: dataset })
+        body: JSON.stringify({ 
+            url: url,
+            numerical: featureType === 'numerical'
+        })
     })
     .then(response => {
         if (!response.ok) {
@@ -214,8 +218,9 @@ function displayMultiModelResults(data) {
     let safeModelCount = 0;
     let bestModel = { name: '', confidence: -1 };
 
-    results.forEach(result => {
-        const cardId = `${result.model_name.toLowerCase()}Results`;
+    for (const model_name in results) {
+        const result = results[model_name];
+        const cardId = `${model_name.toLowerCase()}Results`;
         const card = document.getElementById(cardId);
         if (!card) return;
 
@@ -256,11 +261,11 @@ function displayMultiModelResults(data) {
         });
 
         if (maxProb > bestModel.confidence) {
-            bestModel = { name: result.model_name, confidence: maxProb };
+            bestModel = { name: model_name, confidence: maxProb };
         }
 
         contentDiv.innerHTML += `<div class="text-muted small mt-3 text-end">Thời gian: ${(result.execution_time_ms).toFixed(0)} ms</div>`;
-    });
+    }
 
     createComparisonChart(results);
     generateSummary(safeModelCount, bestModel.name, modelNames.length);
@@ -276,14 +281,18 @@ function createComparisonChart(results) {
         'RF': 'rgba(75, 192, 192, 0.7)'
     };
 
-    const datasets = results.map(result => {
+    const datasets = Object.keys(results).map(model_name => {
+        const result = results[model_name];
         if (result.error) return null;
+
+        const upper_model_name = model_name.toUpperCase();
+
         return {
-            label: result.model_name,
+            label: upper_model_name,
             data: result.probabilities,
-            backgroundColor: modelColors[result.model_name].replace('0.7', '0.2'),
-            borderColor: modelColors[result.model_name],
-            pointBackgroundColor: modelColors[result.model_name],
+            backgroundColor: modelColors[upper_model_name].replace('0.7', '0.2'),
+            borderColor: modelColors[upper_model_name],
+            pointBackgroundColor: modelColors[upper_model_name],
         };
     }).filter(ds => ds !== null);
 
