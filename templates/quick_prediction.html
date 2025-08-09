@@ -61,6 +61,15 @@
                         </div>
                     </div>
 
+                    <div class="row mb-3">
+                        <div class="col-md-6 d-flex align-items-center">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="numericalSwitch" checked>
+                                <label class="form-check-label" for="numericalSwitch">Sử dụng đặc trưng số (numerical)</label>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="text-center">
                         <button type="submit" class="btn btn-primary btn-lg">
                             <i class="fas fa-search me-2"></i>
@@ -121,16 +130,16 @@
         </div>
     </div>
 </div>
+
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('quickPredictionForm');
     const thresholdRange = document.getElementById('thresholdRange');
     const thresholdValue = document.getElementById('thresholdValue');
-    
+
     // Update threshold display
     thresholdRange.addEventListener('input', function() {
         thresholdValue.textContent = this.value + '%';
@@ -144,70 +153,76 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function performQuickPrediction() {
-    const url = document.getElementById('urlInput').value.trim();
+    const form = document.getElementById('quickPredictionForm');
+    const url = document.getElementById('urlInput').value;
     const model = document.getElementById('modelSelect').value;
-    const threshold = document.getElementById('thresholdRange').value / 100;
-    const dataset = document.getElementById('datasetSelect').value;
-    
+    const dataset = document.getElementById('datasetSelect').value; // Kept for data consistency
+    const threshold = parseInt(document.getElementById('thresholdRange').value, 10) / 100;
+    const numerical = document.getElementById('numericalSwitch').checked;
+
     if (!url) {
-        showAlert('Vui lòng nhập URL cần kiểm tra!', 'warning');
+        showAlert('Vui lòng nhập URL.', 'warning');
         return;
     }
-    
-    // Show loading
+
     document.getElementById('loadingSection').style.display = 'block';
     document.getElementById('resultsSection').style.display = 'none';
-    
-    // Make prediction request
-    fetch('/predict', {
+
+    fetch('/api/predict-url', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-            url: url,
-            model_type: model,
-            threshold: threshold,
-            dataset: dataset,
-            numerical: true
-        })
+        body: JSON.stringify({ url: url, model: model, threshold: threshold, dataset: dataset, numerical: numerical })
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => { throw new Error(err.error || 'Lỗi không xác định từ server.'); });
+        }
+        return response.json();
+    })
     .then(data => {
-        document.getElementById('loadingSection').style.display = 'none';
         if (data.error) {
             showAlert(data.error, 'danger');
         } else {
-            displayResults(data);
+            // The API returns comparison_results, which is an array. For single prediction, we take the first element.
+            const result = data.comparison_results[0];
+            if (result.error) {
+                showAlert(`Lỗi từ mô hình ${result.model_name}: ${result.error}`, 'danger');
+            } else {
+                displayResults(result, data.url, dataset);
+            }
         }
     })
     .catch(error => {
-        document.getElementById('loadingSection').style.display = 'none';
-        showAlert('Có lỗi xảy ra khi phân tích URL!', 'danger');
+        showAlert('Có lỗi xảy ra khi phân tích URL: ' + error.message, 'danger');
         console.error('Error:', error);
+    })
+    .finally(() => {
+        document.getElementById('loadingSection').style.display = 'none';
     });
 }
 
-function displayResults(data) {
+function displayResults(result, url, dataset) {
     const resultsSection = document.getElementById('resultsSection');
     const overallAssessment = document.getElementById('overallAssessment');
     const predictionBars = document.getElementById('predictionBars');
     
-    // Calculate overall safety
-    const predictions = data.predictions;
-    const isSafe = predictions[0] > 0.5 && Math.max(...predictions.slice(1)) <= 0.5;
-    
+    const labels = result.predicted_labels;
+    const probabilities = result.probabilities;
+    const isMalicious = labels.phishing || labels.defacement || labels.malware;
+
     // Update overall assessment
-    overallAssessment.className = `alert ${isSafe ? 'alert-success' : 'alert-danger'}`;
+    overallAssessment.className = `alert ${!isMalicious ? 'alert-success' : 'alert-danger'}`;
     overallAssessment.innerHTML = `
         <div class="d-flex align-items-center">
-            <i class="fas ${isSafe ? 'fa-shield-alt' : 'fa-exclamation-triangle'} me-3" style="font-size: 2rem;"></i>
+            <i class="fas ${!isMalicious ? 'fa-shield-alt' : 'fa-exclamation-triangle'} me-3" style="font-size: 2rem;"></i>
             <div>
-                <h5 class="mb-1">${isSafe ? 'URL An toàn' : 'URL Nguy hiểm'}</h5>
+                <h5 class="mb-1">${!isMalicious ? 'URL An toàn' : 'URL Nguy hiểm'}</h5>
                 <p class="mb-0">
-                    ${isSafe ? 
-                        'URL này có khả năng an toàn cao và không chứa mối đe dọa.' : 
-                        'URL này có thể chứa mối đe dọa bảo mật, hãy thận trọng khi truy cập.'
+                    ${!isMalicious 
+                        ? 'URL này được đánh giá là an toàn, không chứa mối đe dọa.' 
+                        : 'URL này có khả năng chứa mối đe dọa. Hãy thận trọng!'
                     }
                 </p>
             </div>
@@ -215,19 +230,17 @@ function displayResults(data) {
     `;
     
     // Create prediction bars
-    const labels = data.label_names;
-    const colors = ['#28a745', '#ffc107', '#dc3545', '#fd7e14'];
+    const labelNames = ['Benign', 'Defacement', 'Malware', 'Phishing'];
+    const colors = ['#28a745', '#0dcaf0', '#dc3545', '#ffc107'];
     
     predictionBars.innerHTML = '';
-    predictions.forEach((prob, index) => {
+    probabilities.forEach((prob, index) => {
         const percentage = (prob * 100).toFixed(1);
-        const isPositive = prob > (data.threshold || 0.5);
-        
         predictionBars.innerHTML += `
             <div class="prediction-bar-item mb-3">
                 <div class="d-flex justify-content-between align-items-center mb-1">
-                    <span class="fw-semibold">${labels[index]}</span>
-                    <span class="badge ${isPositive ? 'bg-danger' : 'bg-secondary'}">${percentage}%</span>
+                    <span class="fw-semibold">${labelNames[index]}</span>
+                    <span class="badge" style="background-color: ${colors[index]}; min-width: 55px;">${percentage}%</span>
                 </div>
                 <div class="progress">
                     <div class="progress-bar" 
@@ -239,28 +252,31 @@ function displayResults(data) {
     });
     
     // Update execution info
-    document.getElementById('usedModel').textContent = data.model_type.toUpperCase();
-    document.getElementById('executionTime').textContent = (data.execution_time || 0).toFixed(2) + 's';
-    document.getElementById('usedDataset').textContent = data.dataset;
+    document.getElementById('usedModel').textContent = result.model_name.toUpperCase();
+    document.getElementById('executionTime').textContent = (result.execution_time_ms / 1000).toFixed(3) + 's';
+    document.getElementById('usedDataset').textContent = dataset;
     
     // Show results
     resultsSection.style.display = 'block';
 }
 
+// Removed popup rendering; inline results are sufficient
+
 function showAlert(message, type) {
+    const container = document.querySelector('.glass-card');
+    // Remove any existing alerts
+    const existingAlert = container.querySelector('.alert-dismissible');
+    if(existingAlert) existingAlert.remove();
+
     const alertDiv = document.createElement('div');
-    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show mt-3`;
+    alertDiv.setAttribute('role', 'alert');
     alertDiv.innerHTML = `
         ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     `;
     
-    const container = document.querySelector('.glass-card');
-    container.insertBefore(alertDiv, container.firstChild);
-    
-    setTimeout(() => {
-        alertDiv.remove();
-    }, 5000);
+    container.insertBefore(alertDiv, container.querySelector('form'));
 }
 </script>
 {% endblock %}
