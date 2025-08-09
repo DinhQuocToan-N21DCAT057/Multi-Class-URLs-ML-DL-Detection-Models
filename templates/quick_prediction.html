@@ -61,6 +61,15 @@
                         </div>
                     </div>
 
+                    <div class="row mb-3">
+                        <div class="col-md-6 d-flex align-items-center">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="numericalSwitch" checked>
+                                <label class="form-check-label" for="numericalSwitch">Sử dụng đặc trưng số (numerical)</label>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="text-center">
                         <button type="submit" class="btn btn-primary btn-lg">
                             <i class="fas fa-search me-2"></i>
@@ -121,6 +130,7 @@
         </div>
     </div>
 </div>
+
 {% endblock %}
 
 {% block extra_scripts %}
@@ -147,6 +157,8 @@ function performQuickPrediction() {
     const url = document.getElementById('urlInput').value;
     const model = document.getElementById('modelSelect').value;
     const dataset = document.getElementById('datasetSelect').value; // Kept for data consistency
+    const threshold = parseInt(document.getElementById('thresholdRange').value, 10) / 100;
+    const numerical = document.getElementById('numericalSwitch').checked;
 
     if (!url) {
         showAlert('Vui lòng nhập URL.', 'warning');
@@ -161,7 +173,7 @@ function performQuickPrediction() {
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ url: url, model_type: model, dataset: dataset })
+        body: JSON.stringify({ url: url, model: model, threshold: threshold, dataset: dataset, numerical: numerical })
     })
     .then(response => {
         if (!response.ok) {
@@ -247,6 +259,8 @@ function displayResults(result, url, dataset) {
     // Show results
     resultsSection.style.display = 'block';
 }
+
+// Removed popup rendering; inline results are sufficient
 
 function showAlert(message, type) {
     const container = document.querySelector('.glass-card');

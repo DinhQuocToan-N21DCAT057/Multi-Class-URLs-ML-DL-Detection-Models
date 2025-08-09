@@ -210,6 +210,7 @@ cython_debug/
 /missing_urls.csv
 /processed_malicious_phish.csv
 /test.csv
+/secrets
 
 /Colab_Script_Old.txt
 /Colab_Script_New.txt
@@ -221,3 +222,4 @@ cython_debug/
 
 # Firebase credentials
 configs/firebase-credentials.json
+firebase_db.json
