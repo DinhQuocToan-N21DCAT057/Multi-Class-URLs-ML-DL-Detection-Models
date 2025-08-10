@@ -141,18 +141,16 @@ class URLDetectionApp {
         this.hideElement('resultsSection');
 
         try {
-            const response = await this.makeAPICall('/predict', {
+            const response = await this.makeAPICall('/api/predict-url', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
                     url: data.url,
-                    model_type: data.model || this.settings.defaultModel,
-                    threshold: parseFloat(data.threshold) / 100 || 0.5,
-                    dataset: data.dataset || this.settings.defaultDataset,
-                    numerical: true
-                })
+                    model_name: data.model_name || this.settings.defaultModel,
+                    features_type: document.getElementById('feature_type').value === 'numerical'
+                }),
             });
 
             if (response.error) {
@@ -186,7 +184,8 @@ class URLDetectionApp {
                     url: data.url,
                     threshold: parseFloat(data.threshold) / 100 || 0.5,
                     dataset: data.dataset || this.settings.defaultDataset,
-                    numerical: true
+                    features_type: document.getElementById('feature_type').value === 'numerical',
+                    model_name: data.model_name || this.settings.defaultModel
                 })
             });
 
@@ -196,7 +195,7 @@ class URLDetectionApp {
                 this.displayMultiModelResults(response);
             }
         } catch (error) {
-            this.showAlert('Có lỗi xảy ra khi phân tích URL!', 'danger');
+            this.showAlert('Có lỗi xảy ra khi so sánh mô hình!', 'danger');
             console.error('Multi-model prediction error:', error);
         } finally {
             this.hideLoading('loadingSection');
@@ -424,7 +423,7 @@ class URLDetectionApp {
         const executionTime = document.getElementById('executionTime');
         const usedDataset = document.getElementById('usedDataset');
 
-        if (usedModel) usedModel.textContent = (data.model_type || '').toUpperCase();
+        if (usedModel) usedModel.textContent = (data.model_name || '').toUpperCase();
         if (executionTime) executionTime.textContent = (data.execution_time || 0).toFixed(2) + 's';
         if (usedDataset) usedDataset.textContent = data.dataset || '';
     }
@@ -754,7 +753,7 @@ class URLDetectionApp {
             let recent = JSON.parse(localStorage.getItem('recentPredictions') || '[]');
             recent.unshift({
                 url: data.url,
-                model: data.model_type,
+                model_name: data.model_name,
                 timestamp: new Date().toISOString(),
                 predictions: data.predictions,
                 is_safe: this.isSafePrediction(data.predictions, data.threshold)

@@ -23,6 +23,7 @@ class Config:
     )
 
     # Model configuration
+
     DEFAULT_DATASET = os.environ.get("DEFAULT_DATASET", "dataset_1")
     DEFAULT_MODEL_TYPE = os.environ.get("DEFAULT_MODEL_TYPE", "cnn")
     DEFAULT_THRESHOLD = float(os.environ.get("DEFAULT_THRESHOLD", "0.5"))
@@ -65,6 +66,7 @@ class Config:
     XGB_RF_VECTORIZER_PATH = os.path.join(
         ROOT_DIR, "models", f"{DEFAULT_DATASET}", "tfidf_vectorizer_XGB_RF.pkl"
     )
+
 
     # Application settings
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file upload

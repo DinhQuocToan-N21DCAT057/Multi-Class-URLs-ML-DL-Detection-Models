@@ -130,14 +130,14 @@ def generate_model_comparison_chart_data(results: Dict[str, Any]) -> Dict[str, A
         'rf': '#f093fb'
     }
 
-    for model_type, model_results in results.items():
+    for model_name, model_results in results.items():
         if 'error' not in model_results and 'predictions' in model_results:
             predictions = model_results['predictions']
             chart_data['datasets'].append({
-                'label': model_type.upper(),
+                'label': model_name.upper(),
                 'data': predictions,
-                'backgroundColor': colors.get(model_type, '#666666'),
-                'borderColor': colors.get(model_type, '#666666'),
+                'backgroundColor': colors.get(model_name, '#666666'),
+                'borderColor': colors.get(model_name, '#666666'),
                 'borderWidth': 2,
                 'fill': False
             })
@@ -154,27 +154,27 @@ def calculate_model_performance_metrics(predictions_history: List[Dict[str, Any]
     }
 
     for pred in predictions_history:
-        model_type = pred.get('model_type')
-        if model_type in model_stats:
-            model_stats[model_type]['total'] += 1
-            model_stats[model_type]['avg_time'] += pred.get('execution_time', 0)
+        model_name = pred.get('model_name')
+        if model_name in model_stats:
+            model_stats[model_name]['total'] += 1
+            model_stats[model_name]['avg_time'] += pred.get('execution_time', 0)
 
             # Check if prediction is safe (benign with high confidence)
             predictions = pred.get('predictions', [])
             if predictions and len(predictions) >= 4:
                 if predictions[0] > 0.5 and max(predictions[1:]) < 0.5:
-                    model_stats[model_type]['safe_predictions'] += 1
+                    model_stats[model_name]['safe_predictions'] += 1
 
     # Calculate averages
-    for model_type in model_stats:
-        if model_stats[model_type]['total'] > 0:
-            model_stats[model_type]['avg_time'] /= model_stats[model_type]['total']
-            model_stats[model_type]['safety_rate'] = (
-                    model_stats[model_type]['safe_predictions'] /
-                    model_stats[model_type]['total'] * 100
+    for model_name in model_stats:
+        if model_stats[model_name]['total'] > 0:
+            model_stats[model_name]['avg_time'] /= model_stats[model_name]['total']
+            model_stats[model_name]['safety_rate'] = (
+                    model_stats[model_name]['safe_predictions'] /
+                    model_stats[model_name]['total'] * 100
             )
         else:
-            model_stats[model_type]['safety_rate'] = 0
+            model_stats[model_name]['safety_rate'] = 0
 
     return model_stats
 
@@ -199,7 +199,7 @@ def export_predictions_to_csv(predictions: List[Dict[str, Any]]) -> str:
         if len(predictions_list) >= 4:
             writer.writerow([
                 pred.get('url', ''),
-                pred.get('model_type', ''),
+                pred.get('model_name', ''),
                 pred.get('dataset', ''),
                 predictions_list[0],
                 predictions_list[1],

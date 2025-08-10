@@ -24,7 +24,7 @@
                             </h5>
                         </div>
                         
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <div class="mb-3">
                                 <label for="defaultModel" class="form-label">Mô hình mặc định</label>
                                 <select class="form-select" id="defaultModel">
@@ -33,18 +33,6 @@
                                     <option value="rf">Random Forest</option>
                                 </select>
                                 <div class="form-text">Mô hình được sử dụng cho dự đoán nhanh</div>
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="defaultDataset" class="form-label">Dataset mặc định</label>
-                                <select class="form-select" id="defaultDataset">
-                                    <option value="dataset_1">Dataset 1</option>
-                                    <option value="dataset_2">Dataset 2</option>
-                                    <option value="dataset_3">Dataset 3</option>
-                                </select>
-                                <div class="form-text">Dataset được sử dụng cho các mô hình</div>
                             </div>
                         </div>
                     </div>
@@ -311,13 +299,12 @@ function initializeEventListeners() {
 }
 
 function loadSettings() {
-    // Load settings from localStorage or use defaults
     const settings = JSON.parse(localStorage.getItem('urlDetectionSettings')) || getDefaultSettings();
     
-    // Apply settings to form
+    // Load general settings
     document.getElementById('defaultModel').value = settings.defaultModel;
-    document.getElementById('defaultDataset').value = settings.defaultDataset;
-    
+
+    // Load thresholds
     document.getElementById('cnnThreshold').value = settings.thresholds.cnn;
     document.getElementById('cnnThresholdValue').textContent = settings.thresholds.cnn + '%';
     
@@ -342,7 +329,6 @@ function loadSettings() {
 function saveSettings() {
     const settings = {
         defaultModel: document.getElementById('defaultModel').value,
-        defaultDataset: document.getElementById('defaultDataset').value,
         thresholds: {
             cnn: parseInt(document.getElementById('cnnThreshold').value),
             xgb: parseInt(document.getElementById('xgbThreshold').value),
@@ -394,7 +380,6 @@ function resetSettings() {
 function getDefaultSettings() {
     return {
         defaultModel: 'cnn',
-        defaultDataset: 'dataset_1',
         thresholds: {
             cnn: 50,
             xgb: 50,

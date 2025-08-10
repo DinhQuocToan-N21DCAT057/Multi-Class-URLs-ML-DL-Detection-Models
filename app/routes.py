@@ -2,14 +2,18 @@ import os
 import json
 import logging
 import hashlib
+
 from datetime import date
 from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for
+
 import firebase_admin
 from firebase_admin import db
 import numpy as np
 from scripts.url_multi_labels_predictor import URL_PREDICTOR
+
 from utils.utils import json_to_csv
 from configs.config import Config
+
 
 # Create a Blueprint for routes
 bp = Blueprint("main", __name__)
@@ -20,6 +24,11 @@ logging.basicConfig(level=logging.DEBUG)
 
 def hash_url(url: str) -> str:
     """Generate SHA256 hash of URL."""
+    return hashlib.sha256(url.encode('utf-8')).hexdigest()
+
+def get_domain(url: str) -> str:
+    """Extract the domain from a URL."""
+    return urlparse(url).netloc
     return hashlib.sha256(url.encode("utf-8")).hexdigest()
 
 
@@ -220,6 +229,7 @@ def analysis_dashboard():
 
 @bp.route("/history")
 def history():
+
     predictions = get_predictions_from_firebase()
     return render_template("history.html", predictions=predictions)
 
@@ -237,7 +247,6 @@ def model_info():
 # API Routes
 @bp.route("/api/predict-url", methods=["POST"])
 def predict_url():
-    """Single model prediction endpoint, updated for the new schema."""
     try:
         data = request.get_json()
         if not data:
@@ -396,11 +405,13 @@ def predict_url():
         return jsonify({"error": f"Lỗi dự đoán: {str(e)}"}), 500
 
 
+
 @bp.route("/api/predict-multi-model", methods=["POST"])
 def predict_multi_model():
     """Multi-model prediction endpoint with caching and feature reuse optimization, predicting both numerical and non-numerical."""
     try:
         data = request.get_json()
+
         if not data:
             return jsonify({"error": "Invalid JSON"}), 400
 
@@ -583,9 +594,11 @@ def predict_multi_model():
 
         return jsonify({"url": url, "comparison_results": all_results})
 
+
     except Exception as e:
         logging.error(f"Multi-model prediction error: {e}")
         return jsonify({"error": f"Lỗi dự đoán đa mô hình: {str(e)}"}), 500
+
 
 
 # Error handlers

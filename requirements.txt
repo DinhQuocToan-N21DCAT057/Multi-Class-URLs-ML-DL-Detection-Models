@@ -1,7 +1,11 @@
 flask
 firebase-admin
 numpy
+pandas
 tensorflow
 # Downgrade protobuf to a compatible version to avoid AttributeError
 protobuf==4.21.12
 scikit-learn
+xgboost
+dill
+tqdm

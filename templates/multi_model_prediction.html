@@ -16,6 +16,7 @@
         <p class="main-subtitle">Kiểm tra URL với nhiều mô hình khác nhau để so sánh kết quả</p>
     </div>
 
+
     <!-- Form Section -->
     <div class="form-container">
         <form id="multiModelForm">
@@ -836,12 +837,14 @@
         });
     });
 
+
     function performMultiModelPrediction() {
         const url = document.getElementById('urlInput').value;
         const modelSelect = document.getElementById('modelSelect').value;
         const dataset = document.getElementById('datasetSelect').value;
         const threshold = parseFloat(document.getElementById('thresholdRange').value) / 100;
         const numerical = document.querySelector('input[name="numerical"]:checked').value === 'true';
+
 
         if (!url) {
             showAlert('Vui lòng nhập URL cần kiểm tra.', 'warning');
@@ -904,8 +907,10 @@
     function displayResults(data) {
         const results = data.comparison_results;
 
+
         // Show results section
         document.getElementById('resultsSection').style.display = 'block';
+
 
         // Display overall result
         displayOverallResult(results);
@@ -915,6 +920,7 @@
 
         // Display model details
         displayModelDetails(results);
+
 
         // Generate summary
         generateSummary(results);
@@ -968,6 +974,7 @@
     function createComparisonChart(results) {
         const ctx = document.getElementById('comparisonChart').getContext('2d');
         const labels = ['An toàn', 'Defacement', 'Malware', 'Phishing'];
+
 
         const modelColors = {
             'CNN_NUM': '#3b82f6',
@@ -1054,6 +1061,7 @@
             'XGB_NON': { name: 'XGBoost (Non-numerical)', icon: '🌳', color: '#10b981' },
             'RF_NUM': { name: 'Random Forest (Numerical)', icon: '🌲', color: '#f59e0b' },
             'RF_NON': { name: 'Random Forest (Non-numerical)', icon: '🌲', color: '#f59e0b' }
+
         };
 
         results.forEach(result => {

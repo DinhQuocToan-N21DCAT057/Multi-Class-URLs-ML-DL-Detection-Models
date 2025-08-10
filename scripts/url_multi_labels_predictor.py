@@ -1,10 +1,13 @@
+import time
 import os
+
 import sys
 import numpy as np
+
 import pandas as pd
-import nltk
-import re
+import numpy as np
 import joblib
+
 import logging
 import time
 
@@ -136,6 +139,7 @@ class URL_PREDICTOR(object):
     @timer
     def predict_with_RF(self, threshold=0.5, numerical=True):
         if numerical:
+
             self.X3_pre_processing()
             if self.RF_NUMERICAL_MODEL is None:
                 raise ValueError("RF numerical model not loaded. Call URL_PREDICTOR.preload(['rf_num']) once, or set predictor.RF_NUMERICAL_MODEL.")
@@ -171,9 +175,11 @@ class URL_PREDICTOR(object):
                 self.predictions = self.RF_NON_NUMERICAL_MODEL.predict(self.X4)
                 self.predicted_labels = self.predictions
 
+
     @timer
     def predict_with_CNN(self, threshold=0.5, numerical=True):
         if numerical:
+
             self.X1_pre_processing()
             if self.CNN_NUMERICAL_MODEL is None:
                 raise ValueError("CNN numerical model not loaded. Call URL_PREDICTOR.preload(['cnn_num']) once, or set predictor.CNN_NUMERICAL_MODEL.")
@@ -186,9 +192,11 @@ class URL_PREDICTOR(object):
             self.predictions = self.CNN_NON_NUMERICAL_MODEL.predict(self.X2)
             self.predicted_labels = (self.predictions > threshold).astype(int)
 
+
     @timer
     def predict_with_XGB(self, threshold=0.5, numerical=True):
         if numerical:
+
             self.X3_pre_processing()
             if self.XGB_NUMERICAL_MODEL is None:
                 raise ValueError("XGB numerical model not loaded. Call URL_PREDICTOR.preload(['xgb_num']) once, or set predictor.XGB_NUMERICAL_MODEL.")
@@ -238,8 +246,10 @@ class URL_PREDICTOR(object):
                     true_label = self.y.iloc[i]
                     print(f"True label: {true_label}")
 
+
     @timer
     def X1_pre_processing(self):
+
         self.X1 = self.df.drop(columns=['label', 'url'], errors='ignore')
         columns_to_scale = [col for col in self.X1.columns if
                             col not in ['domain_registration_length', 'domain_age', 'page_rank', 'google_index']]
@@ -382,12 +392,13 @@ class URL_PREDICTOR(object):
             df.append(data)
         except Exception as e:
             logging.error(f"Error extracting features: {e}")
+
             raise
-        return pd.DataFrame(df)
 
     def model_loader(self, PATH):
         model = None
         try:
+
             if PATH in self._MODEL_CACHE:
                 logging.info(f"{PATH} (from cache) loaded successfully!")
                 return self._MODEL_CACHE[PATH]
@@ -401,6 +412,7 @@ class URL_PREDICTOR(object):
                 else:
                     raise ValueError(f"Unsupported model file extension for {PATH}")
                 self._MODEL_CACHE[PATH] = model
+
             else:
                 logging.info(f"Model not found at {PATH}")
                 # Return lightweight dummy model shims that don't require fitting

@@ -253,7 +253,7 @@ function updateMetrics(stats) {
     document.getElementById('avgResponseTime').textContent = avgTime.toFixed(2) + 's';
     
     // Update benign and malicious URL breakdown metrics
-    document.getElementById('benignCount').textContent = stats.benign_count || 0;
+    document.getElementById('benignCount').textContent = stats.safe_count || 0;
     document.getElementById('phishingCount').textContent = stats.phishing_count || 0;
     document.getElementById('defacementCount').textContent = stats.defacement_count || 0;
     document.getElementById('malwareCount').textContent = stats.malware_count || 0;
@@ -285,7 +285,7 @@ function createThreatDistributionChart(stats) {
     
     // Simulate threat distribution data
     const threatData = {
-        benign: stats.benign_count || 0,
+        benign: stats.safe_count || 0,
         phishing: stats.phishing_count || 0,
         malware: stats.malware_count || 0,
         defacement: stats.defacement_count || 0
