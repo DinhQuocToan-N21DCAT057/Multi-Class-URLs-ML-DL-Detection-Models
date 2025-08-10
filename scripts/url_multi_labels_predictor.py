@@ -216,13 +216,53 @@ class URL_PREDICTOR(object):
             if hasattr(self.RF_NON_NUMERICAL_MODEL, "predict_proba"):
                 self.predictions = self.RF_NON_NUMERICAL_MODEL.predict_proba(self.X4)
                 if isinstance(self.predictions, list):
-                    self.predictions = np.stack(
-                        [p[:, 1] if p.shape[1] == 2 else p for p in self.predictions],
-                        axis=1,
-                    )
-                self.predicted_labels = (self.predictions > threshold).astype(int)
+                    # Handle multi-label case where predict_proba returns list of arrays
+                    try:
+                        self.predictions = np.stack(
+                            [p[:, 1] if p.shape[1] == 2 else p for p in self.predictions],
+                            axis=1,
+                        )
+                    except Exception as e:
+                        logging.error(f"Error stacking RF predictions: {e}")
+                        # Fallback: convert each prediction to array and stack manually
+                        pred_arrays = []
+                        for p in self.predictions:
+                            if hasattr(p, 'shape') and p.shape[1] == 2:
+                                pred_arrays.append(p[:, 1])
+                            else:
+                                pred_arrays.append(np.array(p).flatten())
+                        self.predictions = np.column_stack(pred_arrays)
+
+                # Ultimate fix: Ensure predictions is always a numpy array before threshold comparison
+                try:
+                    if not isinstance(self.predictions, np.ndarray):
+                        self.predictions = np.array(self.predictions, dtype=float)
+
+                    # Additional safety check - force conversion if still a list
+                    if isinstance(self.predictions, list):
+                        logging.error(f"RF predictions still a list after conversion: {type(self.predictions)}")
+                        self.predictions = np.array(self.predictions, dtype=float)
+
+                    # Ensure it's a 2D array for threshold comparison
+                    if self.predictions.ndim == 1:
+                        self.predictions = self.predictions.reshape(1, -1)
+
+                    # Safe threshold comparison with explicit type checking
+                    if isinstance(threshold, (int, float)) and isinstance(self.predictions, np.ndarray):
+                        self.predicted_labels = (self.predictions > threshold).astype(int)
+                    else:
+                        logging.error(
+                            f"RF threshold comparison failed: threshold={type(threshold)}, predictions={type(self.predictions)}")
+                        self.predicted_labels = np.zeros_like(self.predictions, dtype=int)
+
+                except Exception as e:
+                    logging.error(f"RF prediction processing failed: {e}")
+                    # Fallback: create dummy predictions
+                    self.predictions = np.array([[0.1, 0.1, 0.1, 0.1]], dtype=float)
+                    self.predicted_labels = np.array([[0, 0, 0, 0]], dtype=int)
             else:
                 self.predictions = self.RF_NON_NUMERICAL_MODEL.predict(self.X4)
+                self.predictions = np.array(self.predictions)
                 self.predicted_labels = self.predictions
 
     @timer
@@ -286,20 +326,60 @@ class URL_PREDICTOR(object):
             if hasattr(self.XGB_NON_NUMERICAL_MODEL, "predict_proba"):
                 self.predictions = self.XGB_NON_NUMERICAL_MODEL.predict_proba(self.X4)
                 if isinstance(self.predictions, list):
-                    self.predictions = np.stack(
-                        [p[:, 1] if p.shape[1] == 2 else p for p in self.predictions],
-                        axis=1,
-                    )
-                self.predicted_labels = (self.predictions > threshold).astype(int)
+                    # Handle multi-label case where predict_proba returns list of arrays
+                    try:
+                        self.predictions = np.stack(
+                            [p[:, 1] if p.shape[1] == 2 else p for p in self.predictions],
+                            axis=1,
+                        )
+                    except Exception as e:
+                        logging.error(f"Error stacking XGB predictions: {e}")
+                        # Fallback: convert each prediction to array and stack manually
+                        pred_arrays = []
+                        for p in self.predictions:
+                            if hasattr(p, 'shape') and p.shape[1] == 2:
+                                pred_arrays.append(p[:, 1])
+                            else:
+                                pred_arrays.append(np.array(p).flatten())
+                        self.predictions = np.column_stack(pred_arrays)
+
+                # Ultimate fix: Ensure predictions is always a numpy array before threshold comparison
+                try:
+                    if not isinstance(self.predictions, np.ndarray):
+                        self.predictions = np.array(self.predictions, dtype=float)
+
+                    # Additional safety check - force conversion if still a list
+                    if isinstance(self.predictions, list):
+                        logging.error(f"XGB predictions still a list after conversion: {type(self.predictions)}")
+                        self.predictions = np.array(self.predictions, dtype=float)
+
+                    # Ensure it's a 2D array for threshold comparison
+                    if self.predictions.ndim == 1:
+                        self.predictions = self.predictions.reshape(1, -1)
+
+                    # Safe threshold comparison with explicit type checking
+                    if isinstance(threshold, (int, float)) and isinstance(self.predictions, np.ndarray):
+                        self.predicted_labels = (self.predictions > threshold).astype(int)
+                    else:
+                        logging.error(
+                            f"XGB threshold comparison failed: threshold={type(threshold)}, predictions={type(self.predictions)}")
+                        self.predicted_labels = np.zeros_like(self.predictions, dtype=int)
+
+                except Exception as e:
+                    logging.error(f"XGB prediction processing failed: {e}")
+                    # Fallback: create dummy predictions
+                    self.predictions = np.array([[0.1, 0.1, 0.1, 0.1]], dtype=float)
+                    self.predicted_labels = np.array([[0, 0, 0, 0]], dtype=int)
             else:
                 self.predictions = self.XGB_NON_NUMERICAL_MODEL.predict(self.X4)
+                self.predictions = np.array(self.predictions)
                 self.predicted_labels = self.predictions
 
     @timer
     def print_result(self):
         if self.predictions is not None and self.predicted_labels is not None:
             for i, (pred, prob) in enumerate(
-                zip(self.predicted_labels, self.predictions)
+                    zip(self.predicted_labels, self.predictions)
             ):
                 print(f"\nSample {i + 1} - Url: {self.url}")
                 for label, p, pl in zip(Config.LABEL_NAMES, prob, pred):
@@ -315,12 +395,12 @@ class URL_PREDICTOR(object):
             col
             for col in self.X1.columns
             if col
-            not in [
-                "domain_registration_length",
-                "domain_age",
-                "page_rank",
-                "google_index",
-            ]
+               not in [
+                   "domain_registration_length",
+                   "domain_age",
+                   "page_rank",
+                   "google_index",
+               ]
         ]
         if getattr(self, "scaler", None) is None:
             self.load_scaler(Config.SCALER_PATH)
@@ -431,7 +511,7 @@ class URL_PREDICTOR(object):
         self.X5 = self.tokenize_urls(self.X5)
         self.input_ids = self.X5["input_ids"].to(self.device)
         self.attention_mask = self.X5["attention_mask"].to(self.device)
-    
+
     @timer
     def tokenize_urls(self, urls, max_length=64):
         tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")

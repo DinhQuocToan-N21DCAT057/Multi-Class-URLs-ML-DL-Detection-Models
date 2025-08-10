@@ -1,75 +1,197 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Phân tích - URL Multi-Labels Detection</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        .navbar {
-            background: rgba(255, 255, 255, 0.95) !important;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
-        }
-        
-        .main-container {
-            padding-top: 100px;
-            padding-bottom: 50px;
-        }
-        
-        .content-card {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 40px;
-            margin-bottom: 30px;
-        }
-    </style>
-</head>
-<body>
-    <!-- Include Navigation -->
-    {% include 'navigation.html' %}
+{% extends "base.html" %}
 
-    <!-- Main Content -->
-    <div class="container main-container">
-        <div class="row justify-content-center">
-            <div class="col-lg-10">
-                <div class="content-card">
-                    <div class="text-center mb-4">
-                        <i class="fas fa-chart-bar" style="font-size: 3rem; color: #667eea;"></i>
-                        <h2 class="mb-3">Phân tích chi tiết</h2>
-                        <p class="text-muted">Trang này sẽ hiển thị các phân tích chi tiết về URL</p>
+{% block title %}Phân tích chi tiết - URL Multi-Labels Detection{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="glass-card text-center">
+                <i class="fas fa-chart-bar analysis-icon mb-3"></i>
+                <h2 class="fw-bold mb-2">Phân tích chi tiết mô hình</h2>
+                <p class="text-muted mb-3">Đánh giá toàn diện hiệu suất và so sánh các mô hình học máy</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Model Performance Overview -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h4 class="mb-3">
+                <i class="fas fa-trophy me-2 text-warning"></i>
+                Thông tin mô hình học sâu
+            </h4>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="model-card bert-card">
+                <div class="model-header">
+                    <i class="fas fa-brain"></i>
+                    <h5>BERT</h5>
+                </div>
+                <div class="model-metrics">
+                    <div class="metric-row">
+                        <span>Accuracy:</span>
+                        <span id="bert-accuracy" class="metric-value">98.4%</span>
                     </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-body">
-                                    <h5 class="card-title">
-                                        <i class="fas fa-chart-pie me-2"></i>
-                                        Thống kê
-                                    </h5>
-                                    <p class="card-text">Thống kê phân tích URL sẽ được hiển thị ở đây.</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-body">
-                                    <h5 class="card-title">
-                                        <i class="fas fa-chart-line me-2"></i>
-                                        Biểu đồ
-                                    </h5>
-                                    <p class="card-text">Biểu đồ phân tích sẽ được hiển thị ở đây.</p>
+                    <div class="metric-row">
+                        <span>Precision:</span>
+                        <span id="bert-precision" class="metric-value">98.2%</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Recall:</span>
+                        <span id="bert-recall" class="metric-value">98.1%</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>F1-Score:</span>
+                        <span id="bert-f1" class="metric-value">98.1%</span>
+                    </div>
+                </div>
+                <div class="model-footer">
+                    <small class="text-muted">Transformer Model</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="model-card cnn-card">
+                <div class="model-header">
+                    <i class="fas fa-network-wired"></i>
+                    <h5>CNN</h5>
+                </div>
+                <div class="model-metrics">
+                    <div class="metric-row">
+                        <span>Accuracy:</span>
+                        <span id="cnn-accuracy" class="metric-value">92.5%</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Precision:</span>
+                        <span id="cnn-precision" class="metric-value">93.2%</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Recall:</span>
+                        <span id="cnn-recall" class="metric-value">91.8%</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>F1-Score:</span>
+                        <span id="cnn-f1" class="metric-value">92.5%</span>
+                    </div>
+                </div>
+                <div class="model-footer">
+                    <small class="text-muted">Deep Learning Model</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="model-card xgb-card">
+                <div class="model-header">
+                    <i class="fas fa-tree"></i>
+                    <h5>XGBoost</h5>
+                </div>
+                <div class="model-metrics">
+                    <div class="metric-row">
+                        <span>Accuracy:</span>
+                        <span id="xgb-accuracy" class="metric-value">97.8%</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Precision:</span>
+                        <span id="xgb-precision" class="metric-value">97.9%</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Recall:</span>
+                        <span id="xgb-recall" class="metric-value">97.7%</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>F1-Score:</span>
+                        <span id="xgb-f1" class="metric-value">97.8%</span>
+                    </div>
+                </div>
+                <div class="model-footer">
+                    <small class="text-muted">Gradient Boosting</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="model-card rf-card">
+                <div class="model-header">
+                    <i class="fas fa-seedling"></i>
+                    <h5>Random Forest</h5>
+                </div>
+                <div class="model-metrics">
+                    <div class="metric-row">
+                        <span>Accuracy:</span>
+                        <span id="rf-accuracy" class="metric-value">98.1%</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Precision:</span>
+                        <span id="rf-precision" class="metric-value">98.3%</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Recall:</span>
+                        <span id="rf-recall" class="metric-value">97.9%</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>F1-Score:</span>
+                        <span id="rf-f1" class="metric-value">98.1%</span>
+                    </div>
+                </div>
+                <div class="model-footer">
+                    <small class="text-muted">Ensemble Learning</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Model Analysis Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="glass-card">
+                <h4 class="card-title mb-4">
+                    <i class="fas fa-chart-line me-2 text-info"></i>
+                    Phân tích chi tiết mô hình
+                </h4>
+                
+                <!-- Model Selection -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <label for="modelSelect" class="form-label">
+                            <i class="fas fa-robot me-2"></i>Chọn mô hình:
+                        </label>
+                        <select class="form-select" id="modelSelect" onchange="updateModelAnalysis()">
+                            <option value="BERT">BERT - Transformer Model</option>
+                            <option value="CNN1">CNN Model 1 - Deep Learning</option>
+                            <option value="CNN2">CNN Model 2 - Deep Learning</option>
+                            <option value="XGB1">XGBoost Model 1 - Gradient Boosting</option>
+                            <option value="XGB2">XGBoost Model 2 - Gradient Boosting</option>
+                            <option value="RF1">Random Forest Model 1 - Ensemble</option>
+                            <option value="RF2">Random Forest Model 2 - Ensemble</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="metricSelect" class="form-label">
+                            <i class="fas fa-chart-bar me-2"></i>Chọn loại biểu đồ:
+                        </label>
+                        <select class="form-select" id="metricSelect" onchange="updateModelAnalysis()">
+                            <option value="CONF_MATRIX">Ma trận nhầm lẫn (Confusion Matrix)</option>
+                            <option value="PR_AUC">Precision-Recall & AUC</option>
+                            <option value="ACC_LOSS">Accuracy & Loss Graph</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Image Display Area -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="image-display-container">
+                            <div class="text-center" id="imageContainer">
+                                <img id="analysisImage" 
+                                     src="{{ url_for('static', filename='images/dataset_1/BERT_CONF_MATRIX.png') }}" 
+                                     alt="Model Analysis" 
+                                     class="img-fluid analysis-image">
+                                <div class="mt-3">
+                                    <h5 id="imageTitle">BERT - Ma trận nhầm lẫn</h5>
+                                    <p class="text-muted" id="imageDescription">
+                                        Ma trận nhầm lẫn thể hiện khả năng phân loại chính xác của mô hình BERT
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -79,7 +201,273 @@
         </div>
     </div>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html> 
+    <!-- Model Comparison Summary -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="glass-card">
+                <h4 class="card-title mb-4">
+                    <i class="fas fa-medal me-2 text-warning"></i>
+                    Tổng kết so sánh mô hình
+                </h4>
+                <div class="row">
+                    <div class="col-md-3 text-center">
+                        <div class="ranking-item gold">
+                            <div class="ranking-icon">🏆</div>
+                            <h5>BERT</h5>
+                            <p class="ranking-score">98.4%</p>
+                            <small class="text-muted">Độ chính xác cao nhất</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <div class="ranking-item silver">
+                            <div class="ranking-icon">🥈</div>
+                            <h5>Random Forest</h5>
+                            <p class="ranking-score">98.1%</p>
+                            <small class="text-muted">Ổn định và nhanh</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <div class="ranking-item bronze">
+                            <div class="ranking-icon">🥉</div>
+                            <h5>XGBoost</h5>
+                            <p class="ranking-score">97.8%</p>
+                            <small class="text-muted">Hiệu quả cao</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <div class="ranking-item fourth">
+                            <div class="ranking-icon">4️⃣</div>
+                            <h5>CNN</h5>
+                            <p class="ranking-score">92.5%</p>
+                            <small class="text-muted">Deep Learning</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.analysis-icon {
+    font-size: 3rem;
+    color: var(--primary-color);
+}
+
+.model-card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 15px;
+    padding: 1.5rem;
+    height: 100%;
+    transition: all 0.3s ease;
+}
+
+.model-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.bert-card { border-left: 4px solid #e74c3c; }
+.cnn-card { border-left: 4px solid #2ecc71; }
+.xgb-card { border-left: 4px solid #f39c12; }
+.rf-card { border-left: 4px solid #3498db; }
+
+.model-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.model-header i {
+    font-size: 1.5rem;
+    margin-right: 0.5rem;
+}
+
+.bert-card .model-header i { color: #e74c3c; }
+.cnn-card .model-header i { color: #2ecc71; }
+.xgb-card .model-header i { color: #f39c12; }
+.rf-card .model-header i { color: #3498db; }
+
+.model-header h5 {
+    margin: 0;
+    font-weight: bold;
+}
+
+.model-metrics {
+    margin-bottom: 1rem;
+}
+
+.metric-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    padding: 0.25rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.metric-value {
+    font-weight: bold;
+    color: #fff;
+}
+
+.model-footer {
+    text-align: center;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.image-display-container {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 15px;
+    padding: 2rem;
+    min-height: 500px;
+}
+
+.analysis-image {
+    max-width: 100%;
+    max-height: 600px;
+    border-radius: 10px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+}
+
+.analysis-image:hover {
+    transform: scale(1.02);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+}
+
+.ranking-item {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+}
+
+.ranking-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.ranking-icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.ranking-score {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #fff;
+    margin: 0.5rem 0;
+}
+
+.gold { border-left: 4px solid #ffd700; }
+.silver { border-left: 4px solid #c0c0c0; }
+.bronze { border-left: 4px solid #cd7f32; }
+.fourth { border-left: 4px solid #8c8c8c; }
+
+@media (max-width: 768px) {
+    .model-card {
+        margin-bottom: 1rem;
+    }
+    
+    .analysis-image {
+        max-height: 400px;
+    }
+    
+    .image-display-container {
+        padding: 1rem;
+    }
+}
+</style>
+
+<script>
+// Image mapping for different models and metrics
+const imageMapping = {
+    'BERT': {
+        'CONF_MATRIX': 'BERT_CONF_MATRIX.png',
+        'PR_AUC': 'BERT_PR_AUC.png',
+        'ACC_LOSS': 'BERT_ACC_LOSS_GRAPH.png'
+    },
+    'CNN1': {
+        'CONF_MATRIX': 'CNN1_CONF_MATRX.png',
+        'PR_AUC': 'CNN1_PR_AUC.png',
+        'ACC_LOSS': 'CNN1_ACC_LOSS_GRAPH.png'
+    },
+    'CNN2': {
+        'CONF_MATRIX': 'CNN2_CONF_MATRX.png',
+        'PR_AUC': 'CNN2_PR_AUC.png',
+        'ACC_LOSS': 'CNN2_ACC_LOSS_GRAPH.png'
+    },
+    'XGB1': {
+        'CONF_MATRIX': 'XGB1_CONF_MATRX.png',
+        'PR_AUC': 'XGB1_PR_AUC.png',
+        'ACC_LOSS': 'XGB1_ACC_LOSS_GRAPH.png'
+    },
+    'XGB2': {
+        'CONF_MATRIX': 'XGB2_CONF_MATRX.png',
+        'PR_AUC': 'XGB2_PR_AUC.png',
+        'ACC_LOSS': 'XGB2_ACC_LOSS_GRAPH.png'
+    },
+    'RF1': {
+        'CONF_MATRIX': 'RF1_CONF_MATRX.png',
+        'PR_AUC': 'RF1_PR_AUC.png',
+        'ACC_LOSS': 'RF1_CONF_MATRX.png' // RF doesn't have ACC_LOSS, use confusion matrix
+    },
+    'RF2': {
+        'CONF_MATRIX': 'RF2_CONF_MATRX.png',
+        'PR_AUC': 'RF2_PR_AUC.png',
+        'ACC_LOSS': 'RF2_CONF_MATRX.png' // RF doesn't have ACC_LOSS, use confusion matrix
+    }
+};
+
+// Model display names
+const modelNames = {
+    'BERT': 'BERT - Transformer Model',
+    'CNN1': 'CNN Model 1 - Deep Learning',
+    'CNN2': 'CNN Model 2 - Deep Learning',
+    'XGB1': 'XGBoost Model 1 - Gradient Boosting',
+    'XGB2': 'XGBoost Model 2 - Gradient Boosting',
+    'RF1': 'Random Forest Model 1 - Ensemble',
+    'RF2': 'Random Forest Model 2 - Ensemble'
+};
+
+// Metric descriptions
+const metricDescriptions = {
+    'CONF_MATRIX': 'Ma trận nhầm lẫn thể hiện khả năng phân loại chính xác của mô hình',
+    'PR_AUC': 'Biểu đồ Precision-Recall và AUC thể hiện hiệu suất phân loại',
+    'ACC_LOSS': 'Biểu đồ Accuracy và Loss trong quá trình huấn luyện'
+};
+
+function updateModelAnalysis() {
+    const modelSelect = document.getElementById('modelSelect');
+    const metricSelect = document.getElementById('metricSelect');
+    const selectedModel = modelSelect.value;
+    const selectedMetric = metricSelect.value;
+    
+    // Get image filename
+    const imageName = imageMapping[selectedModel][selectedMetric];
+    const imageUrl = `/static/images/dataset_1/${imageName}`;
+    
+    // Update image
+    const analysisImage = document.getElementById('analysisImage');
+    analysisImage.src = imageUrl;
+    analysisImage.alt = `${selectedModel} - ${selectedMetric}`;
+    
+    // Update title and description
+    const imageTitle = document.getElementById('imageTitle');
+    const imageDescription = document.getElementById('imageDescription');
+    
+    const metricName = metricSelect.options[metricSelect.selectedIndex].text;
+    imageTitle.textContent = `${modelNames[selectedModel]} - ${metricName}`;
+    imageDescription.textContent = `${metricDescriptions[selectedMetric]} cho mô hình ${selectedModel}`;
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    updateModelAnalysis();
+});
+</script>
+{% endblock %}

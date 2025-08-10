@@ -14,7 +14,7 @@ class Config:
         os.path.join(
             ROOT_DIR,
             "secrets",
-            "multi-labels-urls-firebase-db-firebase-adminsdk-fbsvc-87b7743762.json",
+            "multi-labels-urls-firebase-db-firebase-adminsdk-fbsvc-4b4bcf48b7.json",
         ),
     )
     FIREBASE_DATABASE_URL = os.environ.get(
@@ -80,7 +80,7 @@ class Config:
     AVAILABLE_DATASETS = ["dataset_1", "dataset_2", "dataset_3"]
 
     # Available model types
-    AVAILABLE_MODELS = ["cnn", "xgb", "rf"]
+    AVAILABLE_MODELS = ["cnn", "xgb", "rf", "bert"]
 
     # Label mappings
     LABEL_NAMES = ["benign", "defacement", "malware", "phishing"]

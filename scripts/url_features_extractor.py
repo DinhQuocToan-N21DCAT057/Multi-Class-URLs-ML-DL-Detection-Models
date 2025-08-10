@@ -2240,15 +2240,20 @@ class URL_EXTRACTOR(object):
     def global_rank(self):
         if self.domain in URL_EXTRACTOR.global_rank_cache:
             return URL_EXTRACTOR.global_rank_cache[self.domain]
-        rank_checker_response = requests.post(
-            "https://www.checkpagerank.net/index.php", {"name": self.domain}
-        )
+        
         try:
+            rank_checker_response = requests.post(
+                "https://www.checkpagerank.net/index.php", 
+                {"name": self.domain},
+                timeout=5  # Add timeout to prevent hanging
+            )
             rank = int(
                 re.findall(r"Global Rank: ([0-9]+)", rank_checker_response.text)[0]
             )
-        except:
+        except (requests.exceptions.RequestException, ValueError, IndexError, Exception):
+            # Return default value if network request fails
             rank = -1
+        
         URL_EXTRACTOR.global_rank_cache[self.domain] = rank
         return rank
 
@@ -2308,15 +2313,20 @@ class URL_EXTRACTOR(object):
     def page_rank(self):
         if self.domain in URL_EXTRACTOR.page_rank_cache:
             return URL_EXTRACTOR.page_rank_cache[self.domain]
-        rank_checker_response = requests.post(
-            "https://www.checkpagerank.net/index.php", {"name": self.domain}
-        )
+        
         try:
+            rank_checker_response = requests.post(
+                "https://www.checkpagerank.net/index.php", 
+                {"name": self.domain},
+                timeout=5  # Add timeout to prevent hanging
+            )
             rank = int(
                 re.findall(r"Global Rank: ([0-9]+)", rank_checker_response.text)[0]
             )
-        except:
+        except (requests.exceptions.RequestException, ValueError, IndexError, Exception):
+            # Return default value if network request fails
             rank = -1
+        
         URL_EXTRACTOR.page_rank_cache[self.domain] = rank
         return rank
 

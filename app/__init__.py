@@ -19,7 +19,7 @@ def create_app():
     app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
     # Load models
-    URL_PREDICTOR.preload(['cnn_num', 'cnn_non', 'xgb_num', 'xgb_non', 'rf_num', 'rf_non'])
+    URL_PREDICTOR.preload(['cnn_num', 'cnn_non', 'xgb_num', 'xgb_non', 'rf_num', 'rf_non', 'bert_non'])
     URL_PREDICTOR.preload_scaler()
     URL_PREDICTOR.preload_vectorizers(['cnn', 'xgb_rf'])
 

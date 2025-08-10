@@ -141,7 +141,7 @@ class URLDetectionApp {
         this.hideElement('resultsSection');
 
         try {
-            const response = await this.makeAPICall('/predict', {
+            const response = await this.makeAPICall('/api/predict-url', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -150,7 +150,6 @@ class URLDetectionApp {
                     url: data.url,
                     model_type: data.model || this.settings.defaultModel,
                     threshold: parseFloat(data.threshold) / 100 || 0.5,
-                    dataset: data.dataset || this.settings.defaultDataset,
                     numerical: true
                 })
             });
@@ -172,23 +171,42 @@ class URLDetectionApp {
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
 
+        console.log('Multi-model prediction form data:', data);
+
+        // Validate URL
+        if (!data.url || !data.url.trim()) {
+            this.showAlert('Vui lòng nhập URL cần kiểm tra!', 'danger');
+            return;
+        }
+
+        if (!data.url.startsWith('http://') && !data.url.startsWith('https://')) {
+            this.showAlert('URL phải bắt đầu với http:// hoặc https://!', 'danger');
+            return;
+        }
+
         this.showLoading('loadingSection');
         this.hideElement('resultsSection');
         this.animateProgress('loadingProgress');
 
         try {
-            const response = await this.makeAPICall('/predict-multi', {
+            // Multi-model prediction uses ALL models automatically - no redundant parameters needed
+            const requestData = {
+                url: data.url.trim(),
+                threshold: parseFloat(data.threshold) / 100 || 0.5
+                // No model selection or numerical parameters - runs ALL models automatically
+            };
+
+            console.log('Sending multi-model prediction request:', requestData);
+
+            const response = await this.makeAPICall('/api/predict-multi-model', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    url: data.url,
-                    threshold: parseFloat(data.threshold) / 100 || 0.5,
-                    dataset: data.dataset || this.settings.defaultDataset,
-                    numerical: true
-                })
+                body: JSON.stringify(requestData)
             });
+
+            console.log('Multi-model prediction response:', response);
 
             if (response.error) {
                 this.showAlert(response.error, 'danger');
@@ -196,7 +214,7 @@ class URLDetectionApp {
                 this.displayMultiModelResults(response);
             }
         } catch (error) {
-            this.showAlert('Có lỗi xảy ra khi phân tích URL!', 'danger');
+            this.showAlert('Có lỗi xảy ra khi phân tích URL! Vui lòng thử lại.', 'danger');
             console.error('Multi-model prediction error:', error);
         } finally {
             this.hideLoading('loadingSection');
@@ -231,11 +249,70 @@ class URLDetectionApp {
     }
 
     displayMultiModelResults(data) {
+        console.log('Displaying multi-model results:', data);
+        
         const resultsSection = document.getElementById('resultsSection');
+        if (!resultsSection) {
+            console.error('Results section not found');
+            return;
+        }
+
+        // Convert backend response format to frontend expected format
+        const results = {};
+        const modelMapping = {
+            'CNN_NUM': 'cnn',
+            'CNN_NON': 'cnn', 
+            'XGB_NUM': 'xgb',
+            'XGB_NON': 'xgb',
+            'RF_NUM': 'rf',
+            'RF_NON': 'rf',
+            'BERT_NON': 'bert'
+        };
+
+        // Process comparison_results from backend
+        if (data.comparison_results && Array.isArray(data.comparison_results)) {
+            data.comparison_results.forEach(result => {
+                console.log('Processing result:', result);
+                
+                const modelKey = modelMapping[result.model_name];
+                console.log(`Model mapping: ${result.model_name} -> ${modelKey}`);
+                
+                if (modelKey) {
+                    // Handle error cases
+                    if (result.error) {
+                        if (!results[modelKey]) {
+                            results[modelKey] = {
+                                predictions: null,
+                                predicted_labels: null,
+                                execution_time: (data.execution_time_ms || 0) / 1000,
+                                error: result.error
+                            };
+                        }
+                        return;
+                    }
+                    
+                    // Handle successful predictions
+                    if (result.probabilities) {
+                        // Use the first available result for each model type, or prefer non-numerical
+                        const isNonNumerical = result.model_name.endsWith('_NON');
+                        if (!results[modelKey] || isNonNumerical) {
+                            results[modelKey] = {
+                                predictions: result.probabilities,
+                                predicted_labels: result.predicted_labels,
+                                execution_time: (data.execution_time_ms || 0) / 1000,
+                                error: null
+                            };
+                        }
+                    }
+                }
+            });
+        }
+
+        console.log('Processed results:', results);
 
         // Update individual model cards
-        const modelTypes = ['cnn', 'xgb', 'rf'];
-        const modelNames = {'cnn': 'CNN', 'xgb': 'XGBoost', 'rf': 'Random Forest'};
+        const modelTypes = ['cnn', 'xgb', 'rf', 'bert'];
+        const modelNames = {'cnn': 'CNN', 'xgb': 'XGBoost', 'rf': 'Random Forest', 'bert': 'BERT'};
 
         let safeModels = 0;
         let bestModel = null;
@@ -243,10 +320,22 @@ class URLDetectionApp {
 
         modelTypes.forEach(modelType => {
             const resultCard = document.getElementById(`${modelType}Results`);
-            if (!resultCard) return;
+            if (!resultCard) {
+                console.warn(`Result card not found for ${modelType}`);
+                return;
+            }
 
             const modelContent = resultCard.querySelector('.model-content');
-            const modelResult = data.results[modelType];
+            if (!modelContent) {
+                console.warn(`Model content not found for ${modelType}`);
+                return;
+            }
+
+            const modelResult = results[modelType];
+            if (!modelResult) {
+                modelContent.innerHTML = `<p class="text-muted">No results available for ${modelNames[modelType]}</p>`;
+                return;
+            }
 
             if (modelResult.error) {
                 modelContent.innerHTML = this.generateErrorHTML(modelResult.error);
@@ -254,7 +343,16 @@ class URLDetectionApp {
             }
 
             const predictions = modelResult.predictions;
-            const isSafe = this.isSafePrediction(predictions, data.threshold);
+            if (!predictions || !Array.isArray(predictions)) {
+                modelContent.innerHTML = `<p class="text-warning">Invalid prediction data for ${modelNames[modelType]}</p>`;
+                return;
+            }
+
+            // Use Config.LABEL_NAMES or fallback labels
+            const labelNames = ['benign', 'defacement', 'malware', 'phishing'];
+            const threshold = data.threshold || 0.5;
+            
+            const isSafe = this.isSafePrediction(predictions, threshold);
 
             if (isSafe) safeModels++;
 
@@ -268,24 +366,41 @@ class URLDetectionApp {
 
             // Generate content
             modelContent.innerHTML = this.generateModelResultHTML(
-                predictions, data.label_names, data.threshold, modelResult.execution_time, isSafe
+                predictions, labelNames, threshold, modelResult.execution_time, isSafe
             );
         });
 
         // Generate summary
-        this.generateSummary(data, safeModels, bestModel, modelNames);
+        const summaryData = {
+            url: data.url,
+            threshold: data.threshold || 0.5,
+            label_names: ['benign', 'defacement', 'malware', 'phishing']
+        };
+        this.generateSummary(summaryData, safeModels, bestModel, modelNames);
 
         // Create comparison chart if function exists
         if (typeof createComparisonChart === 'function') {
-            createComparisonChart(data, data.label_names, modelTypes, {
+            createComparisonChart(summaryData, summaryData.label_names, modelTypes, {
                 'cnn': '#667eea',
                 'xgb': '#764ba2',
-                'rf': '#f093fb'
+                'rf': '#f093fb',
+                'bert': '#28a745'
             });
         }
 
         // Show results
         this.showElement('resultsSection', 'slide-up');
+        
+        console.log('Multi-model results displayed successfully');
+    }
+
+    generateErrorHTML(error) {
+        return `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Error:</strong> ${error}
+            </div>
+        `;
     }
 
     // Utility Methods

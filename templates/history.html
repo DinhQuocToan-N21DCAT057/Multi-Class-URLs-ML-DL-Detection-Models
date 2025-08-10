@@ -36,6 +36,7 @@
                             <option value="cnn">CNN</option>
                             <option value="xgb">XGBoost</option>
                             <option value="rf">Random Forest</option>
+                            <option value="bert">BERT</option>
                         </select>
                     </div>
                     <div class="col-md-3">
@@ -137,27 +138,63 @@ document.addEventListener('DOMContentLoaded', function() {
 function loadHistory() {
     const loadingDiv = document.getElementById('historyLoading');
     const table = document.getElementById('historyTable');
+    const emptyState = document.getElementById('emptyState');
+    
     loadingDiv.style.display = 'block';
     table.style.display = 'none';
+    emptyState.style.display = 'none';
 
     fetch('/api/history', { cache: 'no-store' })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
         .then(data => {
-            // keep minimal fields but include date for display/export
-            allHistoryData = (data || []).map(item => ({
-                url: item.url,
-                comparison_results: item.comparison_results || [],
-                prediction_timestamp: item.prediction_timestamp || ''
+            // Handle API response structure
+            const historyArray = data.history || data || [];
+            
+            if (historyArray.length === 0) {
+                allHistoryData = [];
+                emptyState.style.display = 'block';
+                table.style.display = 'none';
+                return;
+            }
+            
+            // Process and normalize data for frontend display
+            allHistoryData = historyArray.map(item => ({
+                url: item.url || '',
+                comparison_results: (item.comparison_results || []).map(result => ({
+                    model_name: result.model_name || '',
+                    predicted_labels: result.predicted_labels || {},
+                    probabilities: result.probabilities || [],
+                    confidence: result.confidence || 0,
+                    safety_status: result.safety_status || 'unknown'
+                })),
+                prediction_timestamp: item.prediction_timestamp || item.formatted_date || '',
+                url_hash: item.url_hash || ''
             }));
+            
             filterHistory(); // Initial render
         })
         .catch(error => {
             console.error('Error loading history:', error);
-            alert('Không thể tải lịch sử. Vui lòng thử lại.');
+            allHistoryData = [];
+            emptyState.style.display = 'block';
+            table.style.display = 'none';
+            
+            // Show user-friendly error message
+            const errorMsg = error.message.includes('HTTP') ? 
+                'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.' :
+                'Có lỗi xảy ra khi tải lịch sử. Vui lòng thử lại sau.';
+            alert(errorMsg);
         })
         .finally(() => {
             loadingDiv.style.display = 'none';
-            table.style.display = 'table';
+            if (allHistoryData.length > 0) {
+                table.style.display = 'table';
+            }
         });
 }
 
@@ -167,19 +204,40 @@ function filterHistory() {
     const searchFilter = document.getElementById('searchFilter').value.toLowerCase();
 
     filteredData = allHistoryData.filter(item => {
-        const firstResult = item.comparison_results && item.comparison_results[0] ? item.comparison_results[0] : {};
-        const labels = firstResult.predicted_labels || {};
+        // Model filter - check if any result matches the selected model
+        if (modelFilter) {
+            const hasModel = item.comparison_results.some(result => {
+                const modelName = result.model_name.toLowerCase();
+                // Handle different model key formats (CNN_NUM, CNN_NON -> cnn)
+                return modelName.includes(modelFilter) || 
+                       modelName.startsWith(modelFilter.toUpperCase());
+            });
+            if (!hasModel) return false;
+        }
 
-        // Safety filter
-        const isMalicious = labels.phishing || labels.defacement || labels.malware;
-        if (safetyFilter === 'safe' && isMalicious) return false;
-        if (safetyFilter === 'malicious' && !isMalicious) return false;
+        // Safety filter - check the safety status of results
+        if (safetyFilter) {
+            const hasSafetyMatch = item.comparison_results.some(result => {
+                if (safetyFilter === 'safe') {
+                    return result.safety_status === 'safe' || 
+                           (!result.predicted_labels.phishing && 
+                            !result.predicted_labels.defacement && 
+                            !result.predicted_labels.malware);
+                } else if (safetyFilter === 'malicious') {
+                    return result.safety_status === 'malicious' ||
+                           (result.predicted_labels.phishing || 
+                            result.predicted_labels.defacement || 
+                            result.predicted_labels.malware);
+                }
+                return true;
+            });
+            if (!hasSafetyMatch) return false;
+        }
 
-        // Model filter
-        if (modelFilter && !item.comparison_results.some(r => r.model_name.toLowerCase() === modelFilter)) return false;
-
-        // Search filter
-        if (searchFilter && !item.url.toLowerCase().includes(searchFilter)) return false;
+        // Search filter - search in URL
+        if (searchFilter && !item.url.toLowerCase().includes(searchFilter)) {
+            return false;
+        }
 
         return true;
     });

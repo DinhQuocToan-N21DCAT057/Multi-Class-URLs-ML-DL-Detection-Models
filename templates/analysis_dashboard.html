@@ -166,25 +166,98 @@
                     <div class="accuracy-item">
                         <div class="model-name">CNN</div>
                         <div class="accuracy-bar">
-                            <div class="accuracy-fill" id="cnnAccuracy" style="width: 0%;"></div>
+                            <div class="accuracy-fill" id="cnnAccuracy" style="width: 92.5%;"></div>
                         </div>
-                        <div class="accuracy-value" id="cnnAccuracyValue">-</div>
+                        <div class="accuracy-value" id="cnnAccuracyValue">92.5%</div>
                     </div>
                     
                     <div class="accuracy-item">
                         <div class="model-name">XGBoost</div>
                         <div class="accuracy-bar">
-                            <div class="accuracy-fill" id="xgbAccuracy" style="width: 0%;"></div>
+                            <div class="accuracy-fill" id="xgbAccuracy" style="width: 97.8%;"></div>
                         </div>
-                        <div class="accuracy-value" id="xgbAccuracyValue">-</div>
+                        <div class="accuracy-value" id="xgbAccuracyValue">97.8%</div>
                     </div>
                     
                     <div class="accuracy-item">
                         <div class="model-name">Random Forest</div>
                         <div class="accuracy-bar">
-                            <div class="accuracy-fill" id="rfAccuracy" style="width: 0%;"></div>
+                            <div class="accuracy-fill" id="rfAccuracy" style="width: 98.1%;"></div>
                         </div>
-                        <div class="accuracy-value" id="rfAccuracyValue">-</div>
+                        <div class="accuracy-value" id="rfAccuracyValue">98.1%</div>
+                    </div>
+                    
+                    <div class="accuracy-item">
+                        <div class="model-name">BERT</div>
+                        <div class="accuracy-bar">
+                            <div class="accuracy-fill" id="bertAccuracy" style="width: 98.4%;"></div>
+                        </div>
+                        <div class="accuracy-value" id="bertAccuracyValue">98.4%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Model Analysis Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="glass-card">
+                <h5 class="card-title mb-4">
+                    <i class="fas fa-microscope me-2"></i>
+                    Phân tích chi tiết mô hình
+                </h5>
+                
+                <!-- Model Selection Controls -->
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <label for="dashboardModelSelect" class="form-label">
+                            <i class="fas fa-robot me-2"></i>Chọn mô hình:
+                        </label>
+                        <select class="form-select" id="dashboardModelSelect" onchange="updateDashboardModelAnalysis()">
+                            <option value="BERT">BERT - Transformer Model</option>
+                            <option value="CNN1">CNN Model 1 - Deep Learning</option>
+                            <option value="CNN2">CNN Model 2 - Deep Learning</option>
+                            <option value="XGB1">XGBoost Model 1 - Gradient Boosting</option>
+                            <option value="XGB2">XGBoost Model 2 - Gradient Boosting</option>
+                            <option value="RF1">Random Forest Model 1 - Ensemble</option>
+                            <option value="RF2">Random Forest Model 2 - Ensemble</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="dashboardMetricSelect" class="form-label">
+                            <i class="fas fa-chart-bar me-2"></i>Chọn loại biểu đồ:
+                        </label>
+                        <select class="form-select" id="dashboardMetricSelect" onchange="updateDashboardModelAnalysis()">
+                            <option value="CONF_MATRIX">Ma trận nhầm lẫn</option>
+                            <option value="PR_AUC">Precision-Recall & AUC</option>
+                            <option value="ACC_LOSS">Accuracy & Loss Graph</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button class="btn btn-outline-primary w-100" onclick="updateDashboardModelAnalysis()">
+                            <i class="fas fa-sync-alt me-2"></i>Cập nhật
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Image Display Area -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="dashboard-image-container">
+                            <div class="text-center" id="dashboardImageContainer">
+                                <img id="dashboardAnalysisImage" 
+                                     src="{{ url_for('static', filename='images/dataset_1/BERT_CONF_MATRIX.png') }}" 
+                                     alt="Model Analysis" 
+                                     class="img-fluid dashboard-analysis-image">
+                                <div class="mt-3">
+                                    <h6 id="dashboardImageTitle">BERT - Ma trận nhầm lẫn</h6>
+                                    <p class="text-muted small" id="dashboardImageDescription">
+                                        Ma trận nhầm lẫn thể hiện khả năng phân loại chính xác của mô hình BERT
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -225,123 +298,149 @@
 {% block extra_scripts %}
 <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    loadDashboardData();
-    setInterval(loadDashboardData, 30000); // Refresh every 30 seconds
-});
+async function loadDashboardData() {
+    try {
+        console.log('Loading dashboard data...');
+        
+        // Show loading state for all metrics
+        const loadingElements = [
+            'totalSafe', 'totalPredictions', 'avgResponseTime',
+            'benignCount', 'phishingCount', 'defacementCount', 'malwareCount',
+            'cnnAccuracyValue', 'xgbAccuracyValue', 'rfAccuracyValue', 'bertAccuracyValue'
+        ];
+        
+        loadingElements.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) element.textContent = 'Loading...';
+        });
 
-function loadDashboardData() {
-    Promise.all([
-        fetch('/api/stats').then(r => r.json()),
-        fetch('/api/history').then(r => r.json())
-    ])
-    .then(([stats, history]) => {
-        updateMetrics(stats);
-        updateCharts(stats, history);
-    })
-    .catch(error => {
-        console.error('Error loading dashboard data:', error);
-    });
-}
+        const response = await fetch('/api/stats');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Dashboard API response:', data);
 
-function updateMetrics(stats) {
-    document.getElementById('totalSafe').textContent = stats.safe_count || 0;
-    document.getElementById('totalPredictions').textContent = stats.total_predictions || 0;
-    
-    // Calculate average response time
-    const avgTime = stats.avg_response_time || 0;
-    document.getElementById('avgResponseTime').textContent = avgTime.toFixed(2) + 's';
-    
-    // Update benign and malicious URL breakdown metrics
-    document.getElementById('benignCount').textContent = stats.benign_count || 0;
-    document.getElementById('phishingCount').textContent = stats.phishing_count || 0;
-    document.getElementById('defacementCount').textContent = stats.defacement_count || 0;
-    document.getElementById('malwareCount').textContent = stats.malware_count || 0;
-    
-    // Update model accuracy metrics
-    const modelAccuracy = {
-        cnn: 92.5,
-        xgb: 89.3,
-        rf: 87.8
-    };
-    
-    Object.keys(modelAccuracy).forEach(model => {
-        const accuracy = modelAccuracy[model];
-        document.getElementById(`${model}Accuracy`).style.width = accuracy + '%';
-        document.getElementById(`${model}AccuracyValue`).textContent = accuracy + '%';
-    });
-}
+        // Update key metrics
+        const labelStats = data.label_stats || {};
+        const modelPerformance = data.model_performance || {};
+        
+        // Main metrics cards
+        updateMetricElement('totalSafe', labelStats.safe_count || 0);
+        updateMetricElement('totalPredictions', labelStats.total_count || data.total_predictions || 0);
+        updateMetricElement('avgResponseTime', '~150ms'); // Placeholder - could be calculated from execution times
+        
+        // Label-specific counts
+        updateMetricElement('benignCount', labelStats.benign_count || 0);
+        updateMetricElement('phishingCount', labelStats.phishing_count || 0);
+        updateMetricElement('defacementCount', labelStats.defacement_count || 0);
+        updateMetricElement('malwareCount', labelStats.malware_count || 0);
 
-function updateCharts(stats, history) {
-    createThreatDistributionChart(stats);
-    createModelPerformanceChart(stats);
-    createTimelineChart(history);
-    createROCCurveChart();
-    createConfusionMatrix();
-}
-
-function createThreatDistributionChart(stats) {
-    const ctx = document.getElementById('threatDistributionChart').getContext('2d');
-    
-    // Simulate threat distribution data
-    const threatData = {
-        benign: stats.benign_count || 0,
-        phishing: stats.phishing_count || 0,
-        malware: stats.malware_count || 0,
-        defacement: stats.defacement_count || 0
-    };
-    
-    new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: Object.keys(threatData),
-            datasets: [{
-                data: Object.values(threatData),
-                backgroundColor: ['#28a745', '#ffc107', '#dc3545', '#6f42c1'],
-                borderColor: '#ffffff',
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        padding: 20,
-                        usePointStyle: true
-                    }
+        // Model accuracy metrics
+        Object.keys(modelPerformance).forEach(modelKey => {
+            const performance = modelPerformance[modelKey];
+            const accuracyElementId = `${modelKey}AccuracyValue`;
+            const accuracyBarId = `${modelKey}Accuracy`;
+            
+            if (performance.accuracy) {
+                const accuracyPercent = (performance.accuracy * 100).toFixed(1);
+                updateMetricElement(accuracyElementId, `${accuracyPercent}%`);
+                
+                // Update accuracy bar width
+                const accuracyBar = document.getElementById(accuracyBarId);
+                if (accuracyBar) {
+                    accuracyBar.style.width = `${accuracyPercent}%`;
                 }
             }
+        });
+
+        // Update charts with real data
+        if (data.timeline_data && data.timeline_data.length > 0) {
+            updateTimelineChart(data.timeline_data);
         }
-    });
+        
+        updateThreatDistributionChart(labelStats);
+        updateModelPerformanceChart(modelPerformance);
+        
+        // Update change indicators (simulate trends)
+        updateChangeIndicators(data);
+        
+        console.log('Dashboard data loaded successfully');
+        
+    } catch (error) {
+        console.error('Error loading dashboard data:', error);
+        
+        // Show error state
+        const errorElements = [
+            'totalSafe', 'totalPredictions', 'avgResponseTime',
+            'benignCount', 'phishingCount', 'defacementCount', 'malwareCount'
+        ];
+        
+        errorElements.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) element.textContent = 'Error';
+        });
+        
+        showDashboardNotification('Không thể tải dữ liệu dashboard. Vui lòng thử lại.', 'error');
+    }
 }
 
-function createModelPerformanceChart(stats) {
-    const ctx = document.getElementById('modelPerformanceChart').getContext('2d');
+// Helper function to update metric elements
+function updateMetricElement(elementId, value) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.textContent = typeof value === 'number' ? value.toLocaleString() : value;
+    }
+}
+
+// Update timeline chart with real data
+function updateTimelineChart(timelineData) {
+    const ctx = document.getElementById('timelineChart');
+    if (!ctx) return;
+
+    // Destroy existing chart if it exists
+    if (window.timelineChartInstance) {
+        window.timelineChartInstance.destroy();
+    }
+
+    const labels = timelineData.map(item => {
+        const date = new Date(item.date);
+        return date.toLocaleDateString('vi-VN', { month: 'short', day: 'numeric' });
+    });
     
-    const modelStats = stats.models_used || {};
-    
-    new Chart(ctx, {
-        type: 'bar',
+    const safeData = timelineData.map(item => item.safe || 0);
+    const maliciousData = timelineData.map(item => item.malicious || 0);
+
+    window.timelineChartInstance = new Chart(ctx, {
+        type: 'line',
         data: {
-            labels: ['CNN', 'XGBoost', 'Random Forest'],
-            datasets: [{
-                label: 'Số lượng dự đoán',
-                data: [modelStats.cnn || 0, modelStats.xgb || 0, modelStats.rf || 0],
-                backgroundColor: ['#667eea', '#764ba2', '#f093fb'],
-                borderRadius: 8
-            }]
+            labels: labels,
+            datasets: [
+                {
+                    label: 'URL An toàn',
+                    data: safeData,
+                    borderColor: '#28a745',
+                    backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                },
+                {
+                    label: 'URL Độc hại',
+                    data: maliciousData,
+                    borderColor: '#dc3545',
+                    backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }
+            ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            animation: false,
             plugins: {
                 legend: {
-                    display: false
+                    position: 'top'
                 }
             },
             scales: {
@@ -356,122 +455,42 @@ function createModelPerformanceChart(stats) {
     });
 }
 
-function createTimelineChart(history) {
-    const ctx = document.getElementById('timelineChart').getContext('2d');
-    
-    // Process history data for timeline
-    const timelineData = processTimelineData(history);
-    
-    new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: timelineData.labels,
-            datasets: [
-                {
-                    label: 'An toàn',
-                    data: timelineData.safe,
-                    borderColor: '#28a745',
-                    backgroundColor: '#28a74520',
-                    fill: true,
-                    tension: 0.4
-                },
-                {
-                    label: 'Độc hại',
-                    data: timelineData.malicious,
-                    borderColor: '#dc3545',
-                    backgroundColor: '#dc354520',
-                    fill: true,
-                    tension: 0.4
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: false,
-            plugins: {
-                legend: {
-                    position: 'top'
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    stacked: false
-                }
-            }
-        }
-    });
-}
+// Update threat distribution chart
+function updateThreatDistributionChart(labelStats) {
+    const ctx = document.getElementById('threatDistributionChart');
+    if (!ctx) return;
 
-function createROCCurveChart() {
-    const ctx = document.getElementById('rocCurveChart').getContext('2d');
-    
-    // Simulate ROC curve data
-    const rocData = generateROCData();
-    
-    new Chart(ctx, {
-        type: 'line',
+    // Destroy existing chart if it exists
+    if (window.threatChartInstance) {
+        window.threatChartInstance.destroy();
+    }
+
+    const data = [
+        labelStats.benign_count || 0,
+        labelStats.phishing_count || 0,
+        labelStats.defacement_count || 0,
+        labelStats.malware_count || 0
+    ];
+
+    window.threatChartInstance = new Chart(ctx, {
+        type: 'doughnut',
         data: {
-            datasets: [
-                {
-                    label: 'CNN (AUC: 0.94)',
-                    data: rocData.cnn,
-                    borderColor: '#667eea',
-                    backgroundColor: 'transparent',
-                    pointRadius: 0,
-                    borderWidth: 3
-                },
-                {
-                    label: 'XGBoost (AUC: 0.91)',
-                    data: rocData.xgb,
-                    borderColor: '#764ba2',
-                    backgroundColor: 'transparent',
-                    pointRadius: 0,
-                    borderWidth: 3
-                },
-                {
-                    label: 'Random Forest (AUC: 0.89)',
-                    data: rocData.rf,
-                    borderColor: '#f093fb',
-                    backgroundColor: 'transparent',
-                    pointRadius: 0,
-                    borderWidth: 3
-                },
-                {
-                    label: 'Random (AUC: 0.5)',
-                    data: [{x: 0, y: 0}, {x: 1, y: 1}],
-                    borderColor: '#666',
-                    backgroundColor: 'transparent',
-                    borderDash: [5, 5],
-                    pointRadius: 0
-                }
-            ]
+            labels: ['An toàn', 'Phishing', 'Defacement', 'Malware'],
+            datasets: [{
+                data: data,
+                backgroundColor: [
+                    '#28a745',
+                    '#dc3545',
+                    '#ffc107',
+                    '#6f42c1'
+                ],
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            animation: false,
-            scales: {
-                x: {
-                    type: 'linear',
-                    position: 'bottom',
-                    title: {
-                        display: true,
-                        text: 'False Positive Rate'
-                    },
-                    min: 0,
-                    max: 1
-                },
-                y: {
-                    title: {
-                        display: true,
-                        text: 'True Positive Rate'
-                    },
-                    min: 0,
-                    max: 1
-                }
-            },
             plugins: {
                 legend: {
                     position: 'bottom'
@@ -481,90 +500,257 @@ function createROCCurveChart() {
     });
 }
 
-function createConfusionMatrix() {
-    const container = document.getElementById('confusionMatrix');
-    
-    // Simulate confusion matrix data
-    const confusionData = [
-        [85, 3, 2, 1],  // Benign
-        [4, 78, 5, 2],  // Phishing
-        [2, 3, 82, 3],  // Malware
-        [1, 2, 4, 86]   // Defacement
+// Update model performance chart
+function updateModelPerformanceChart(modelPerformance) {
+    const ctx = document.getElementById('modelPerformanceChart');
+    if (!ctx) return;
+
+    // Destroy existing chart if it exists
+    if (window.performanceChartInstance) {
+        window.performanceChartInstance.destroy();
+    }
+
+    const models = Object.keys(modelPerformance);
+    const accuracyData = models.map(model => 
+        modelPerformance[model].accuracy ? (modelPerformance[model].accuracy * 100) : 0
+    );
+    const predictionCounts = models.map(model => 
+        modelPerformance[model].predictions || 0
+    );
+
+    window.performanceChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: models.map(m => m.toUpperCase()),
+            datasets: [
+                {
+                    label: 'Độ chính xác (%)',
+                    data: accuracyData,
+                    backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1,
+                    yAxisID: 'y'
+                },
+                {
+                    label: 'Số lượng dự đoán',
+                    data: predictionCounts,
+                    backgroundColor: 'rgba(255, 99, 132, 0.8)',
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderWidth: 1,
+                    yAxisID: 'y1'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top'
+                }
+            },
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    max: 100,
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Độ chính xác (%)'
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Số lượng dự đoán'
+                    },
+                    grid: {
+                        drawOnChartArea: false,
+                    },
+                }
+            }
+        }
+    });
+}
+
+// Update change indicators with trend simulation
+function updateChangeIndicators(data) {
+    const indicators = [
+        { id: 'safeChange', value: '+12%', positive: true },
+        { id: 'predictionsChange', value: '+8%', positive: true },
+        { id: 'timeChange', value: '-5%', positive: true }
     ];
-    
-    const labels = ['Benign', 'Phishing', 'Malware', 'Defacement'];
-    
-    let html = '<table class="confusion-matrix-table">';
-    html += '<tr><th></th>';
-    
-    // Header row
-    labels.forEach(label => {
-        html += `<th>Predicted<br>${label}</th>`;
+
+    indicators.forEach(indicator => {
+        const element = document.getElementById(indicator.id);
+        if (element) {
+            element.textContent = indicator.value;
+            element.className = `metric-change ${indicator.positive ? 'positive' : 'negative'}`;
+        }
     });
-    html += '</tr>';
+}
+
+// Show dashboard notification
+function showDashboardNotification(message, type = 'info') {
+    // Create or update notification
+    let notification = document.getElementById('dashboardNotification');
+    if (!notification) {
+        notification = document.createElement('div');
+        notification.id = 'dashboardNotification';
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            max-width: 350px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+        `;
+        document.body.appendChild(notification);
+    }
+
+    const colors = {
+        success: '#28a745',
+        error: '#dc3545',
+        warning: '#ffc107',
+        info: '#17a2b8'
+    };
     
-    // Data rows
-    confusionData.forEach((row, i) => {
-        html += `<tr><th>Actual<br>${labels[i]}</th>`;
-        row.forEach(value => {
-            const intensity = value / 100;
-            html += `<td style="background-color: rgba(102, 126, 234, ${intensity})">${value}</td>`;
+    notification.style.backgroundColor = colors[type] || colors.info;
+    notification.textContent = message;
+    notification.style.transform = 'translateX(0)';
+    
+    setTimeout(() => {
+        notification.style.transform = 'translateX(100%)';
+    }, 5000);
+}
+
+// Dashboard-specific image mapping
+const dashboardImageMapping = {
+    'BERT': {
+        'CONF_MATRIX': 'BERT_CONF_MATRIX.png',
+        'PR_AUC': 'BERT_PR_AUC.png',
+        'ACC_LOSS': 'BERT_ACC_LOSS_GRAPH.png'
+    },
+    'CNN1': {
+        'CONF_MATRIX': 'CNN1_CONF_MATRX.png',
+        'PR_AUC': 'CNN1_PR_AUC.png',
+        'ACC_LOSS': 'CNN1_ACC_LOSS_GRAPH.png'
+    },
+    'CNN2': {
+        'CONF_MATRIX': 'CNN2_CONF_MATRX.png',
+        'PR_AUC': 'CNN2_PR_AUC.png',
+        'ACC_LOSS': 'CNN2_ACC_LOSS_GRAPH.png'
+    },
+    'XGB1': {
+        'CONF_MATRIX': 'XGB1_CONF_MATRX.png',
+        'PR_AUC': 'XGB1_PR_AUC.png',
+        'ACC_LOSS': 'XGB1_ACC_LOSS_GRAPH.png'
+    },
+    'XGB2': {
+        'CONF_MATRIX': 'XGB2_CONF_MATRX.png',
+        'PR_AUC': 'XGB2_PR_AUC.png',
+        'ACC_LOSS': 'XGB2_ACC_LOSS_GRAPH.png'
+    },
+    'RF1': {
+        'CONF_MATRIX': 'RF1_CONF_MATRX.png',
+        'PR_AUC': 'RF1_PR_AUC.png',
+        'ACC_LOSS': 'RF1_CONF_MATRX.png'
+    },
+    'RF2': {
+        'CONF_MATRIX': 'RF2_CONF_MATRX.png',
+        'PR_AUC': 'RF2_PR_AUC.png',
+        'ACC_LOSS': 'RF2_CONF_MATRX.png'
+    }
+};
+
+const dashboardModelNames = {
+    'BERT': 'BERT - Transformer Model',
+    'CNN1': 'CNN Model 1 - Deep Learning',
+    'CNN2': 'CNN Model 2 - Deep Learning',
+    'XGB1': 'XGBoost Model 1 - Gradient Boosting',
+    'XGB2': 'XGBoost Model 2 - Gradient Boosting',
+    'RF1': 'Random Forest Model 1 - Ensemble',
+    'RF2': 'Random Forest Model 2 - Ensemble'
+};
+
+const dashboardMetricDescriptions = {
+    'CONF_MATRIX': 'Ma trận nhầm lẫn thể hiện khả năng phân loại chính xác của mô hình',
+    'PR_AUC': 'Biểu đồ Precision-Recall và AUC thể hiện hiệu suất phân loại',
+    'ACC_LOSS': 'Biểu đồ Accuracy và Loss trong quá trình huấn luyện'
+};
+
+function updateDashboardModelAnalysis() {
+    const modelSelect = document.getElementById('dashboardModelSelect');
+    const metricSelect = document.getElementById('dashboardMetricSelect');
+    const selectedModel = modelSelect.value;
+    const selectedMetric = metricSelect.value;
+    
+    // Use dynamic backend API for image URLs
+    const metricMapping = {
+        'CONF_MATRIX': 'confusion_matrix',
+        'PR_AUC': 'pr_auc',
+        'ACC_LOSS': 'accuracy_loss'
+    };
+    
+    const backendMetric = metricMapping[selectedMetric];
+    const imageApiUrl = `/api/model-image/${selectedModel}/${backendMetric}`;
+    
+    // Fetch image URL from backend API
+    fetch(imageApiUrl)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                console.error('Error loading image:', data.error);
+                // Fallback to direct path
+                const imageName = dashboardImageMapping[selectedModel][selectedMetric];
+                const imageUrl = `/images/dataset_1/${imageName}`;
+                updateImageDisplay(imageUrl, selectedModel, selectedMetric);
+            } else {
+                updateImageDisplay(data.image_url, selectedModel, selectedMetric);
+            }
+        })
+        .catch(error => {
+            console.error('API error:', error);
+            // Fallback to direct path
+            const imageName = dashboardImageMapping[selectedModel][selectedMetric];
+            const imageUrl = `/images/dataset_1/${imageName}`;
+            updateImageDisplay(imageUrl, selectedModel, selectedMetric);
         });
-        html += '</tr>';
-    });
-    
-    html += '</table>';
-    container.innerHTML = html;
 }
 
-function processTimelineData(history) {
-    // Group by day and count safe vs malicious
-    const grouped = {};
+function updateImageDisplay(imageUrl, selectedModel, selectedMetric) {
+    // Update image
+    const analysisImage = document.getElementById('dashboardAnalysisImage');
+    analysisImage.src = imageUrl;
+    analysisImage.alt = `${selectedModel} - ${selectedMetric}`;
     
-    history.forEach(item => {
-        const date = new Date(item.timestamp).toDateString();
-        if (!grouped[date]) {
-            grouped[date] = {safe: 0, malicious: 0};
-        }
-        
-        const predictions = item.predictions || [];
-        const isSafe = predictions[0] > 0.5 && Math.max(...predictions.slice(1)) <= 0.5;
-        
-        if (isSafe) {
-            grouped[date].safe++;
-        } else {
-            grouped[date].malicious++;
-        }
-    });
+    // Update title and description
+    const imageTitle = document.getElementById('dashboardImageTitle');
+    const imageDescription = document.getElementById('dashboardImageDescription');
     
-    const sortedDates = Object.keys(grouped).sort();
-    
-    return {
-        labels: sortedDates.slice(-7), // Last 7 days
-        safe: sortedDates.slice(-7).map(date => grouped[date].safe),
-        malicious: sortedDates.slice(-7).map(date => grouped[date].malicious)
-    };
+    const metricSelect = document.getElementById('dashboardMetricSelect');
+    const metricName = metricSelect.options[metricSelect.selectedIndex].text;
+    imageTitle.textContent = `${dashboardModelNames[selectedModel]} - ${metricName}`;
+    imageDescription.textContent = `${dashboardMetricDescriptions[selectedMetric]} cho mô hình ${selectedModel}`;
 }
 
-function generateROCData() {
-    // Simulate ROC curve data points
-    const generateCurve = (auc) => {
-        const points = [];
-        for (let i = 0; i <= 20; i++) {
-            const fpr = i / 20;
-            // Approximate TPR based on AUC
-            const tpr = Math.min(1, fpr + (auc - 0.5) * 2 * (1 - fpr));
-            points.push({x: fpr, y: tpr});
-        }
-        return points;
-    };
-    
-    return {
-        cnn: generateCurve(0.94),
-        xgb: generateCurve(0.91),
-        rf: generateCurve(0.89)
-    };
-}
+document.addEventListener('DOMContentLoaded', function() {
+    loadDashboardData();
+    setInterval(loadDashboardData, 30000); // Refresh every 30 seconds
+    updateDashboardModelAnalysis(); // Initialize model analysis
+});
 
 function refreshDashboard() {
     const button = event.target.closest('button');

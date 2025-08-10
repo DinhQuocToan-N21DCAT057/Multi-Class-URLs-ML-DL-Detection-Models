@@ -35,6 +35,7 @@
                                 <option value="cnn">CNN (Khuyến nghị)</option>
                                 <option value="xgb">XGBoost</option>
                                 <option value="rf">Random Forest</option>
+                                <option value="bert">BERT/Transformer</option>
                             </select>
                         </div>
                     </div>
@@ -51,14 +52,7 @@
                                    max="90" 
                                    value="50">
                         </div>
-                        <div class="col-md-6">
-                            <label for="datasetSelect" class="form-label">Dataset</label>
-                            <select class="form-select" id="datasetSelect">
-                                <option value="dataset_1">Dataset 1</option>
-                                <option value="dataset_2">Dataset 2</option>
-                                <option value="dataset_3">Dataset 3</option>
-                            </select>
-                        </div>
+
                     </div>
 
                     <div class="row mb-3">
@@ -119,8 +113,7 @@
                                     <div id="executionTime"></div>
                                 </div>
                                 <div class="info-item">
-                                    <small class="text-muted">Dataset:</small>
-                                    <div id="usedDataset"></div>
+
                                 </div>
                             </div>
                         </div>
@@ -156,7 +149,7 @@ function performQuickPrediction() {
     const form = document.getElementById('quickPredictionForm');
     const url = document.getElementById('urlInput').value;
     const model = document.getElementById('modelSelect').value;
-    const dataset = document.getElementById('datasetSelect').value; // Kept for data consistency
+
     const threshold = parseInt(document.getElementById('thresholdRange').value, 10) / 100;
     const numerical = document.getElementById('numericalSwitch').checked;
 
@@ -173,7 +166,7 @@ function performQuickPrediction() {
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ url: url, model: model, threshold: threshold, dataset: dataset, numerical: numerical })
+        body: JSON.stringify({ url: url, model: model, threshold: threshold, numerical: numerical })
     })
     .then(response => {
         if (!response.ok) {
@@ -190,7 +183,7 @@ function performQuickPrediction() {
             if (result.error) {
                 showAlert(`Lỗi từ mô hình ${result.model_name}: ${result.error}`, 'danger');
             } else {
-                displayResults(result, data.url, dataset);
+                displayResults(result, data.url);
             }
         }
     })
@@ -203,7 +196,7 @@ function performQuickPrediction() {
     });
 }
 
-function displayResults(result, url, dataset) {
+function displayResults(result, url) {
     const resultsSection = document.getElementById('resultsSection');
     const overallAssessment = document.getElementById('overallAssessment');
     const predictionBars = document.getElementById('predictionBars');
@@ -253,8 +246,15 @@ function displayResults(result, url, dataset) {
     
     // Update execution info
     document.getElementById('usedModel').textContent = result.model_name.toUpperCase();
-    document.getElementById('executionTime').textContent = (result.execution_time_ms / 1000).toFixed(3) + 's';
-    document.getElementById('usedDataset').textContent = dataset;
+    
+    // Handle execution time safely
+    const executionTime = result.execution_time_ms || result.execution_time || 0;
+    if (executionTime && !isNaN(executionTime)) {
+        document.getElementById('executionTime').textContent = (executionTime / 1000).toFixed(3) + 's';
+    } else {
+        document.getElementById('executionTime').textContent = 'Không xác định';
+    }
+
     
     // Show results
     resultsSection.style.display = 'block';

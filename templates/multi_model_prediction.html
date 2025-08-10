@@ -33,18 +33,13 @@
                                     stroke="currentColor" stroke-width="2" stroke-linecap="round" />
                             </svg>
                         </div>
-                        <input type="url" id="urlInput" placeholder="https://example.com" required>
+                        <input type="url" id="urlInput" name="url" placeholder="https://example.com" required>
                     </div>
                 </div>
 
-                <div class="input-group-custom model-select">
-                    <label class="input-label">Mô hình</label>
-                    <select id="modelSelect" class="custom-select">
-                        <option value="all">Tất cả mô hình (Khuyến nghị)</option>
-                        <option value="cnn">CNN (Khuyến nghị)</option>
-                        <option value="xgb">XGBoost</option>
-                        <option value="rf">Random Forest</option>
-                    </select>
+                <div class="input-group-custom model-info">
+                    <label class="input-label">Mô hình sử dụng</label>
+                    <div class="info-text">Tất cả mô hình (CNN, XGBoost, Random Forest, BERT) với cả numerical và non-numerical</div>
                 </div>
             </div>
 
@@ -52,27 +47,17 @@
             <div class="settings-row">
                 <div class="slider-group">
                     <label class="input-label">Ngưỡng tin cậy: <span id="thresholdValue">50%</span></label>
-                    <input type="range" id="thresholdRange" class="custom-range" min="10" max="90" value="50">
+                    <input type="range" id="thresholdRange" class="custom-range" min="10" max="90" value="50" name="threshold">
                 </div>
 
                 <div class="slider-group">
-                    <label class="input-label">Dataset</label>
-                    <select id="datasetSelect" class="custom-select">
-                        <option value="dataset_1">Dataset 1</option>
-                        <option value="dataset_2">Dataset 2</option>
-                        <option value="dataset_3">Dataset 3</option>
-                    </select>
+                    <label class="input-label">Mô hình đã được tối ưu</label>
+                    <div class="info-text">Sử dụng dataset đã được huấn luyện tốt nhất</div>
                 </div>
 
                 <div class="slider-group">
                     <label class="input-label">Loại dữ liệu</label>
-                    <div class="btn-group-custom">
-                        <input type="radio" name="numerical" id="numericalTrue" value="true" checked>
-                        <label for="numericalTrue" class="btn-radio">Numerical</label>
-
-                        <input type="radio" name="numerical" id="numericalFalse" value="false">
-                        <label for="numericalFalse" class="btn-radio">Non-numerical</label>
-                    </div>
+                    <div class="info-text">Tự động sử dụng cả numerical và non-numerical cho so sánh toàn diện</div>
                 </div>
             </div>
 
@@ -230,9 +215,19 @@
     }
 
     /* Input Groups */
-    .input-group-custom {
+    .slider-group {
         display: flex;
         flex-direction: column;
+    }
+
+    .info-text {
+        color: var(--text-muted);
+        font-size: 0.875rem;
+        background: rgba(255, 255, 255, 0.1);
+        padding: 0.75rem;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        text-align: center;
     }
 
     .input-label {
@@ -824,6 +819,15 @@
         const thresholdRange = document.getElementById('thresholdRange');
         const thresholdValue = document.getElementById('thresholdValue');
 
+        // Check for URL parameter and pre-fill input
+        const urlParams = new URLSearchParams(window.location.search);
+        const prefilledUrl = urlParams.get('url');
+        if (prefilledUrl) {
+            document.getElementById('urlInput').value = decodeURIComponent(prefilledUrl);
+            // Show notification that URL was pre-filled
+            showAlert('URL đã được điền sẵn từ lịch sử phân tích.', 'info');
+        }
+
         // Update threshold display
         thresholdRange.addEventListener('input', function () {
             thresholdValue.textContent = this.value + '%';
@@ -838,10 +842,7 @@
 
     function performMultiModelPrediction() {
         const url = document.getElementById('urlInput').value;
-        const modelSelect = document.getElementById('modelSelect').value;
-        const dataset = document.getElementById('datasetSelect').value;
         const threshold = parseFloat(document.getElementById('thresholdRange').value) / 100;
-        const numerical = document.querySelector('input[name="numerical"]:checked').value === 'true';
 
         if (!url) {
             showAlert('Vui lòng nhập URL cần kiểm tra.', 'warning');
@@ -852,24 +853,13 @@
         document.getElementById('loadingSection').style.display = 'flex';
         document.getElementById('resultsSection').style.display = 'none';
 
-        // Animate progress bar
-        let progress = 0;
-        const progressBar = document.getElementById('loadingProgress');
-        const progressInterval = setInterval(() => {
-            progress += Math.random() * 15;
-            if (progress > 90) progress = 90;
-            progressBar.style.width = progress + '%';
-        }, 200);
-
         // API call
         fetch('/api/predict-multi-model', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 url: url,
-                dataset: dataset,
-                threshold: threshold,
-                numerical: numerical
+                threshold: threshold
             })
         })
             .then(response => {
@@ -881,20 +871,17 @@
                 return response.json();
             })
             .then(data => {
-                clearInterval(progressInterval);
-                progressBar.style.width = '100%';
+                // Hide loading
+                document.getElementById('loadingSection').style.display = 'none';
 
-                setTimeout(() => {
-                    document.getElementById('loadingSection').style.display = 'none';
-                    if (data.error) {
-                        showAlert('Lỗi: ' + data.error, 'danger');
-                    } else {
-                        displayResults(data);
-                    }
-                }, 1000);
+                if (data.error) {
+                    showAlert('Lỗi: ' + data.error, 'danger');
+                } else {
+                    displayResults(data);
+                }
             })
             .catch(error => {
-                clearInterval(progressInterval);
+                // Hide loading
                 document.getElementById('loadingSection').style.display = 'none';
                 showAlert('Có lỗi xảy ra: ' + error.message, 'danger');
                 console.error('Error:', error);
@@ -961,8 +948,7 @@
             <div style="background: #f3f4f6; border-radius: 8px; padding: 1rem;">
                 <strong>Độ tin cậy: ${confidence}%</strong>
             </div>
-        </div>
-    `;
+        `;
     }
 
     function createComparisonChart(results) {

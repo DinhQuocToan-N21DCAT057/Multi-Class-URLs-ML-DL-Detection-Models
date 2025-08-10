@@ -94,28 +94,18 @@
                             <i class="fas fa-shield-alt"></i>
                         </div>
                         <div class="stat-content">
-                            <div class="stat-number" id="safeCount">-</div>
-                            <div class="stat-label">URL Benign</div>
+                            <div class="stat-number text-white" id="safeCount">Loading...</div>
+                            <div class="stat-label text-white">URL Benign</div>
                         </div>
                     </div>
 
                     <div class="stat-item">
                         <div class="stat-icon bg-warning">
-                            <i class="fas fa-fish"></i>
+                            <i class="fas fa-exclamation-triangle"></i>
                         </div>
                         <div class="stat-content">
-                            <div class="stat-number" id="phishingCount">-</div>
-                            <div class="stat-label">URL Phishing</div>
-                        </div>
-                    </div>
-
-                    <div class="stat-item">
-                        <div class="stat-icon bg-info">
-                            <i class="fas fa-mask"></i>
-                        </div>
-                        <div class="stat-content">
-                            <div class="stat-number" id="defacementCount">-</div>
-                            <div class="stat-label">URL Defacement</div>
+                            <div class="stat-number text-white" id="phishingCount">Loading...</div>
+                            <div class="stat-label text-white">URL Phishing</div>
                         </div>
                     </div>
 
@@ -124,18 +114,28 @@
                             <i class="fas fa-virus"></i>
                         </div>
                         <div class="stat-content">
-                            <div class="stat-number" id="malwareCount">-</div>
-                            <div class="stat-label">URL Malware</div>
+                            <div class="stat-number text-white" id="malwareCount">Loading...</div>
+                            <div class="stat-label text-white">URL Malware</div>
+                        </div>
+                    </div>
+
+                    <div class="stat-item">
+                        <div class="stat-icon bg-info">
+                            <i class="fas fa-bug"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-number text-white" id="defacementCount">Loading...</div>
+                            <div class="stat-label text-white">URL Defacement</div>
                         </div>
                     </div>
 
                     <div class="stat-item">
                         <div class="stat-icon bg-primary">
-                            <i class="fas fa-chart-line"></i>
+                            <i class="fas fa-globe"></i>
                         </div>
                         <div class="stat-content">
-                            <div class="stat-number" id="totalCount">-</div>
-                            <div class="stat-label">Tổng kiểm tra</div>
+                            <div class="stat-number text-white" id="totalCount">Loading...</div>
+                            <div class="stat-label text-white">Tổng số URL</div>
                         </div>
                     </div>
                 </div>
@@ -143,51 +143,88 @@
         </div>
     </div>
 
-    <!-- Model Information -->
-    <div class="row">
+    <!-- Model Performance Overview -->
+    <div class="row mt-4">
         <div class="col-12">
             <div class="glass-card">
-                <h3 class="card-title">
-                    <i class="fas fa-brain me-2 text-primary"></i>
-                    Các mô hình học sâu
+                <h3 class="card-title text-white">
+                    <i class="fas fa-cogs me-2 text-primary"></i>
+                    Hiệu suất mô hình
                 </h3>
-
-                <div class="row">
-                    <div class="col-md-4">
+                
+                <div class="row g-3">
+                    <div class="col-md-6 col-lg-3">
                         <div class="model-card">
-                            <div class="model-icon">
-                                <i class="fas fa-network-wired"></i>
+                            <div class="model-header">
+                                <i class="fas fa-brain text-primary"></i>
+                                <span class="text-white">CNN</span>
                             </div>
-                            <h5>CNN Model</h5>
-                            <p>Mạng neural tích chập cho phân tích chuỗi URL và đặc trưng số</p>
-                            <div class="model-metrics">
-                                <small class="text-muted">Độ chính xác cao trong phân loại phishing</small>
+                            <div class="model-stats">
+                                <div class="model-accuracy text-white">
+                                    <span id="cnnAccuracy">Loading...</span>
+                                    <small class="text-white">Accuracy</small>
+                                </div>
+                                <div class="model-predictions text-white">
+                                    <span id="cnnPredictions">0</span>
+                                    <small class="text-white">Predictions</small>
+                                </div>
                             </div>
                         </div>
                     </div>
-
-                    <div class="col-md-4">
+                    
+                    <div class="col-md-6 col-lg-3">
                         <div class="model-card">
-                            <div class="model-icon">
-                                <i class="fas fa-tree"></i>
+                            <div class="model-header">
+                                <i class="fas fa-tree text-success"></i>
+                                <span class="text-white">XGBoost</span>
                             </div>
-                            <h5>XGBoost</h5>
-                            <p>Thuật toán gradient boosting tối ưu cho dữ liệu có cấu trúc</p>
-                            <div class="model-metrics">
-                                <small class="text-muted">Tốc độ xử lý nhanh và hiệu quả cao</small>
+                            <div class="model-stats">
+                                <div class="model-accuracy text-white">
+                                    <span id="xgbAccuracy">Loading...</span>
+                                    <small class="text-white">Accuracy</small>
+                                </div>
+                                <div class="model-predictions text-white">
+                                    <span id="xgbPredictions">0</span>
+                                    <small class="text-white">Predictions</small>
+                                </div>
                             </div>
                         </div>
                     </div>
-
-                    <div class="col-md-4">
+                    
+                    <div class="col-md-6 col-lg-3">
                         <div class="model-card">
-                            <div class="model-icon">
-                                <i class="fas fa-forest"></i>
+                            <div class="model-header">
+                                <i class="fas fa-seedling text-warning"></i>
+                                <span class="text-white">Random Forest</span>
                             </div>
-                            <h5>Random Forest</h5>
-                            <p>Mô hình ensemble learning với khả năng tổng quát hóa tốt</p>
-                            <div class="model-metrics">
-                                <small class="text-muted">Ổn định và ít bị overfitting</small>
+                            <div class="model-stats">
+                                <div class="model-accuracy text-white">
+                                    <span id="rfAccuracy">Loading...</span>
+                                    <small class="text-white">Accuracy</small>
+                                </div>
+                                <div class="model-predictions text-white">
+                                    <span id="rfPredictions">0</span>
+                                    <small class="text-white">Predictions</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 col-lg-3">
+                        <div class="model-card">
+                            <div class="model-header">
+                                <i class="fas fa-language text-info"></i>
+                                <span class="text-white">BERT</span>
+                            </div>
+                            <div class="model-stats">
+                                <div class="model-accuracy text-white">
+                                    <span id="bertAccuracy">Loading...</span>
+                                    <small class="text-white">Accuracy</small>
+                                </div>
+                                <div class="model-predictions text-white">
+                                    <span id="bertPredictions">0</span>
+                                    <small class="text-white">Predictions</small>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -196,33 +233,294 @@
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block extra_scripts %}
 <script>
-// Load statistics on page load
+// Load dynamic statistics on page load
 document.addEventListener('DOMContentLoaded', function() {
     loadSystemStats();
+    loadModelPerformance();
+    
+    // Auto-refresh every 30 seconds
+    setInterval(function() {
+        loadSystemStats();
+        loadModelPerformance();
+    }, 30000);
 });
 
 function loadSystemStats() {
     fetch('/api/stats')
         .then(response => response.json())
         .then(data => {
-            document.getElementById('safeCount').textContent = data.safe_count || 0;
-            document.getElementById('phishingCount').textContent = data.phishing_count || 0;
-            document.getElementById('defacementCount').textContent = data.defacement_count || 0;
-            document.getElementById('malwareCount').textContent = data.malware_count || 0;
-            document.getElementById('totalCount').textContent = data.total_predictions || 0;
+            if (data.status === 'success') {
+                updateStatsDisplay(data);
+            } else {
+                console.error('Failed to load stats:', data.status);
+            }
         })
         .catch(error => {
             console.error('Error loading stats:', error);
-            document.getElementById('safeCount').textContent = '0';
-            document.getElementById('phishingCount').textContent = '0';
-            document.getElementById('defacementCount').textContent = '0';
-            document.getElementById('malwareCount').textContent = '0';
-            document.getElementById('totalCount').textContent = '0';
         });
 }
+
+function loadModelPerformance() {
+    fetch('/api/model-performance')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                updateModelPerformance(data.model_performance);
+            } else {
+                console.error('Failed to load model performance:', data.status);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading model performance:', error);
+        });
+}
+
+function updateStatsDisplay(data) {
+    const labelStats = data.label_stats || {};
+    const totalPredictions = data.total_predictions || 0;
+    
+    // Update counts
+    document.getElementById('safeCount').textContent = labelStats.benign || 0;
+    document.getElementById('phishingCount').textContent = labelStats.phishing || 0;
+    document.getElementById('malwareCount').textContent = labelStats.malware || 0;
+    document.getElementById('defacementCount').textContent = labelStats.defacement || 0;
+    document.getElementById('totalCount').textContent = totalPredictions;
+}
+
+function updateModelPerformance(modelData) {
+    // Update CNN
+    if (modelData.cnn) {
+        const cnnAccuracy = (modelData.cnn.accuracy * 100).toFixed(1) + '%';
+        document.getElementById('cnnAccuracy').textContent = cnnAccuracy;
+        document.getElementById('cnnPredictions').textContent = modelData.cnn.predictions || 0;
+    }
+    
+    // Update XGBoost
+    if (modelData.xgb) {
+        const xgbAccuracy = (modelData.xgb.accuracy * 100).toFixed(1) + '%';
+        document.getElementById('xgbAccuracy').textContent = xgbAccuracy;
+        document.getElementById('xgbPredictions').textContent = modelData.xgb.predictions || 0;
+    }
+    
+    // Update Random Forest
+    if (modelData.rf) {
+        const rfAccuracy = (modelData.rf.accuracy * 100).toFixed(1) + '%';
+        document.getElementById('rfAccuracy').textContent = rfAccuracy;
+        document.getElementById('rfPredictions').textContent = modelData.rf.predictions || 0;
+    }
+    
+    // Update BERT
+    if (modelData.bert) {
+        const bertAccuracy = (modelData.bert.accuracy * 100).toFixed(1) + '%';
+        document.getElementById('bertAccuracy').textContent = bertAccuracy;
+        document.getElementById('bertPredictions').textContent = modelData.bert.predictions || 0;
+    }
+}
+</script>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Load system statistics from backend
+    async function loadSystemStats() {
+        try {
+            // Show loading state
+            const statsElements = ['safeCount', 'phishingCount', 'defacementCount', 'malwareCount', 'totalCount'];
+            statsElements.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) element.textContent = 'Loading...';
+            });
+
+            const response = await fetch('/api/stats');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            console.log('Stats API response:', data);
+
+            // Update statistics with proper mapping
+            const labelStats = data.label_stats || {};
+            
+            // Update main statistics cards
+            updateElementText('safeCount', labelStats.safe_count || 0);
+            updateElementText('phishingCount', labelStats.phishing_count || 0);
+            updateElementText('defacementCount', labelStats.defacement_count || 0);
+            updateElementText('malwareCount', labelStats.malware_count || 0);
+            updateElementText('totalCount', labelStats.total_count || data.total_predictions || 0);
+
+            // Update model performance if available
+            const modelPerformance = data.model_performance || {};
+            Object.keys(modelPerformance).forEach(modelKey => {
+                const performance = modelPerformance[modelKey];
+                const accuracyElement = document.getElementById(`${modelKey}Accuracy`);
+                const predictionsElement = document.getElementById(`${modelKey}Predictions`);
+                
+                if (accuracyElement && performance.accuracy) {
+                    accuracyElement.textContent = `${(performance.accuracy * 100).toFixed(1)}%`;
+                }
+                if (predictionsElement && performance.predictions) {
+                    predictionsElement.textContent = performance.predictions;
+                }
+            });
+
+            // Update recent predictions display
+            if (data.recent_predictions && data.recent_predictions.length > 0) {
+                updateRecentPredictions(data.recent_predictions);
+            }
+
+            // Update status indicator
+            const statusElement = document.getElementById('systemStatus');
+            if (statusElement) {
+                statusElement.textContent = data.status === 'active' ? 'Hoạt động' : 'Lỗi';
+                statusElement.className = data.status === 'active' ? 'badge bg-success' : 'badge bg-danger';
+            }
+
+            console.log('System stats loaded successfully');
+            
+        } catch (error) {
+            console.error('Error loading system stats:', error);
+            
+            // Show error state
+            const statsElements = ['safeCount', 'phishingCount', 'defacementCount', 'malwareCount', 'totalCount'];
+            statsElements.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) element.textContent = 'Error';
+            });
+            
+            // Show error message to user
+            showNotification('Không thể tải thống kê hệ thống. Vui lòng thử lại sau.', 'error');
+        }
+    }
+
+    // Helper function to safely update element text
+    function updateElementText(elementId, value) {
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.textContent = typeof value === 'number' ? value.toLocaleString() : value;
+        }
+    }
+
+    // Update recent predictions display
+    function updateRecentPredictions(predictions) {
+        const container = document.getElementById('recentPredictionsContainer');
+        if (!container) return;
+
+        if (predictions.length === 0) {
+            container.innerHTML = '<p class="text-muted">Chưa có dự đoán nào gần đây.</p>';
+            return;
+        }
+
+        let html = '<div class="list-group">';
+        predictions.slice(0, 5).forEach(pred => {
+            const url = pred.url || 'Unknown URL';
+            const domain = extractDomain(url);
+            const timestamp = new Date().toLocaleString(); // Fallback timestamp
+            
+            // Determine overall threat level from comparison results
+            let threatLevel = 'safe';
+            let threatText = 'An toàn';
+            let threatClass = 'success';
+            
+            if (pred.comparison_results && pred.comparison_results.length > 0) {
+                const firstResult = pred.comparison_results[0];
+                const probabilities = firstResult.probabilities || [1, 0, 0, 0];
+                
+                if (probabilities[0] <= 0.5) { // Not benign
+                    const maxThreatIdx = probabilities.slice(1).indexOf(Math.max(...probabilities.slice(1))) + 1;
+                    switch (maxThreatIdx) {
+                        case 1:
+                            threatLevel = 'defacement';
+                            threatText = 'Defacement';
+                            threatClass = 'warning';
+                            break;
+                        case 2:
+                            threatLevel = 'malware';
+                            threatText = 'Malware';
+                            threatClass = 'danger';
+                            break;
+                        case 3:
+                            threatLevel = 'phishing';
+                            threatText = 'Phishing';
+                            threatClass = 'danger';
+                            break;
+                    }
+                }
+            }
+
+            html += `
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1">${domain}</h6>
+                        <small class="text-muted">${timestamp}</small>
+                    </div>
+                    <span class="badge bg-${threatClass}">${threatText}</span>
+                </div>
+            `;
+        });
+        html += '</div>';
+        
+        container.innerHTML = html;
+    }
+
+    // Helper function to extract domain from URL
+    function extractDomain(url) {
+        try {
+            const urlObj = new URL(url.startsWith('http') ? url : 'http://' + url);
+            return urlObj.hostname;
+        } catch {
+            return url.length > 30 ? url.substring(0, 30) + '...' : url;
+        }
+    }
+
+    // Show notification to user
+    function showNotification(message, type = 'info') {
+        // Create notification element if it doesn't exist
+        let notification = document.getElementById('notification');
+        if (!notification) {
+            notification = document.createElement('div');
+            notification.id = 'notification';
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 9999;
+                max-width: 300px;
+                padding: 12px 16px;
+                border-radius: 6px;
+                color: white;
+                font-weight: 500;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                transform: translateX(100%);
+                transition: transform 0.3s ease;
+            `;
+            document.body.appendChild(notification);
+        }
+
+        // Set notification style based on type
+        const colors = {
+            success: '#28a745',
+            error: '#dc3545',
+            warning: '#ffc107',
+            info: '#17a2b8'
+        };
+        notification.style.backgroundColor = colors[type] || colors.info;
+        notification.textContent = message;
+        
+        // Show notification
+        notification.style.transform = 'translateX(0)';
+        
+        // Hide after 5 seconds
+        setTimeout(() => {
+            notification.style.transform = 'translateX(100%)';
+        }, 5000);
+    }
+
+    // Load statistics on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        loadSystemStats();
+    });
 </script>
 {% endblock %}
