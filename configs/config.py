@@ -58,6 +58,12 @@ class Config:
         f"{DEFAULT_DATASET}",
         "RF_MODEL_ON_NON_NUMERICAL_FEATURES.pkl",
     )
+    BERT_NON_NUMERICAL_MODEL_PATH = os.path.join(
+        ROOT_DIR,
+        "models",
+        f"{DEFAULT_DATASET}",
+        "BERT_MODEL_ON_NON_NUMERICAL_FEATURES.pth"
+    )
     SCALER_PATH = os.path.join(ROOT_DIR, "models", f"{DEFAULT_DATASET}", "scaler.pkl")
     CNN_VECTORIZER_PATH = os.path.join(
         ROOT_DIR, "models", f"{DEFAULT_DATASET}", "tfidf_vectorizer_CNN.pkl"
