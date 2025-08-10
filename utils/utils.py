@@ -229,3 +229,82 @@ def clean_old_predictions(predictions: List[Dict[str, Any]], max_age_days: int =
             filtered_predictions.append(pred)
 
     return filtered_predictions
+
+
+def csv_to_json(csv_path: str, json_output_path: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Convert a CSV file to a list of JSON objects.
+
+    Args:
+        csv_path: Path to the input CSV file.
+        json_output_path: Optional path to write the JSON output. When provided,
+            the parsed data will be written to this file using UTF-8 encoding.
+
+    Returns:
+        A list of dictionaries where each dict represents a row from the CSV.
+    """
+    import csv
+
+    with open(csv_path, mode="r", encoding="utf-8-sig", newline="") as f:
+        reader = csv.DictReader(f)
+        data: List[Dict[str, Any]] = [dict(row) for row in reader]
+
+    if json_output_path:
+        with open(json_output_path, mode="w", encoding="utf-8") as out_f:
+            json.dump(data, out_f, ensure_ascii=False, indent=2)
+
+    return data
+
+
+def json_to_csv(json_path: str, csv_output_path: Optional[str] = None) -> str:
+    """Convert a JSON file (array of objects) to CSV.
+
+    Args:
+        json_path: Path to the input JSON file. Expected format is a list of
+            objects (dictionaries) with string keys.
+        csv_output_path: Optional path to write the CSV output. When provided,
+            the CSV will be written using UTF-8 with BOM for Excel compatibility.
+
+    Returns:
+        The CSV content as a string. If csv_output_path is provided, the same
+        content is also written to that file.
+    """
+    import csv
+    import io
+
+    with open(json_path, mode="r", encoding="utf-8") as f:
+        loaded = json.load(f)
+
+    if not isinstance(loaded, list):
+        raise ValueError("Input JSON must be a list of objects (dictionaries)")
+
+    # Determine field order: keys from the first item, then union of remaining keys
+    fieldnames: List[str] = []
+    seen_keys: set[str] = set()
+    if loaded:
+        for key in loaded[0].keys():
+            fieldnames.append(key)
+            seen_keys.add(key)
+        # Include any additional keys from other items (stable, sorted for determinism)
+        extra_keys: set[str] = set()
+        for item in loaded[1:]:
+            if isinstance(item, dict):
+                extra_keys.update(set(item.keys()) - seen_keys)
+        for key in sorted(extra_keys):
+            fieldnames.append(key)
+
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=fieldnames, extrasaction="ignore")
+    writer.writeheader()
+    for item in loaded:
+        if not isinstance(item, dict):
+            raise ValueError("All elements in the JSON array must be objects (dictionaries)")
+        writer.writerow({k: item.get(k, "") for k in fieldnames})
+
+    csv_content = output.getvalue()
+
+    if csv_output_path:
+        # Write with BOM for better compatibility with Excel on Windows
+        with open(csv_output_path, mode="w", encoding="utf-8-sig", newline="") as out_f:
+            out_f.write(csv_content)
+
+    return csv_content

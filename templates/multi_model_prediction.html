@@ -3,373 +3,1266 @@
 {% block title %}So sánh mô hình - URL Multi-Labels Detection{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="row justify-content-center">
-        <div class="col-lg-10">
-            <div class="glass-card">
-                <div class="text-center mb-4">
-                    <i class="fas fa-layer-group prediction-icon"></i>
-                    <h2 class="fw-bold mb-3">So sánh kết quả đa mô hình</h2>
-                    <p class="text-muted">Kiểm tra URL với nhiều mô hình khác nhau để so sánh kết quả</p>
-                </div>
+<div class="main-container">
+    <!-- Header Section -->
+    <div class="header-section">
+        <div class="search-icon">
+            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2" fill="none" />
+                <path d="m21 21-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+        </div>
+        <h1 class="main-title">So sánh kết quả đa mô hình</h1>
+        <p class="main-subtitle">Kiểm tra URL với nhiều mô hình khác nhau để so sánh kết quả</p>
+    </div>
 
-                <!-- Prediction Form -->
-                <form id="multiModelForm">
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <label for="urlInput" class="form-label">URL cần kiểm tra</label>
-                            <div class="input-group">
-                                <span class="input-group-text">
-                                    <i class="fas fa-link"></i>
-                                </span>
-                                <input type="url" 
-                                       class="form-control" 
-                                       id="urlInput" 
-                                       placeholder="https://example.com"
-                                       required>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <label for="thresholdRange" class="form-label">
-                                Ngưỡng: <span id="thresholdValue">50%</span>
-                            </label>
-                            <input type="range" 
-                                   class="form-range" 
-                                   id="thresholdRange" 
-                                   min="10" 
-                                   max="90" 
-                                   value="50">
-                        </div>
-                    </div>
-                    <div class="row mb-4">
-                        <div class="col-md-3">
-                            <label for="featureTypeSelect" class="form-label">Loại đặc trưng</label>
-                            <select class="form-select" id="featureTypeSelect">
-                                <option value="lexical">Lexical</option>
-                                <option value="numerical">Numerical</option>
-                            </select>
-                        </div>
-                    </div>
 
-                    <div class="text-center">
-                        <button type="submit" class="btn btn-primary btn-lg">
-                            <i class="fas fa-layer-group me-2"></i>
-                            So sánh các mô hình
-                        </button>
-                    </div>
-                </form>
-
-                <!-- Loading -->
-                <div id="loadingSection" class="loading-section" style="display: none;">
-                    <div class="text-center">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Đang tải...</span>
+    <!-- Form Section -->
+    <div class="form-container">
+        <form id="multiModelForm">
+            <!-- URL Input Row -->
+            <div class="input-row">
+                <div class="input-group-custom">
+                    <label class="input-label">URL cần kiểm tra</label>
+                    <div class="input-wrapper">
+                        <div class="input-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" />
+                                <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"
+                                    stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                            </svg>
                         </div>
-                        <p class="mt-3 text-muted">Đang chạy các mô hình...</p>
-                        <div class="progress mt-3" style="max-width: 400px; margin: 0 auto;">
-                            <div class="progress-bar progress-bar-striped progress-bar-animated" 
-                                 id="loadingProgress" style="width: 0%"></div>
-                        </div>
+                        <input type="url" id="urlInput" placeholder="https://example.com" required>
                     </div>
                 </div>
 
-                <!-- Results -->
-                <div id="resultsSection" style="display: none;">
-                    <hr class="my-4">
-                    <h4 class="mb-3">
-                        <i class="fas fa-chart-bar me-2"></i>
-                        Kết quả so sánh mô hình
-                    </h4>
-                    
-                    <!-- Comparison Chart -->
-                    <div class="row mb-4">
-                        <div class="col-12">
-                            <div class="chart-container">
-                                <canvas id="comparisonChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Model Results Grid -->
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="model-result-card" id="cnnResults">
-                                <div class="model-header">
-                                    <i class="fas fa-network-wired"></i>
-                                    <h5>CNN Model</h5>
-                                </div>
-                                <div class="model-content">
-                                    <!-- CNN results will be populated here -->
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-4">
-                            <div class="model-result-card" id="xgbResults">
-                                <div class="model-header">
-                                    <i class="fas fa-tree"></i>
-                                    <h5>XGBoost</h5>
-                                </div>
-                                <div class="model-content">
-                                    <!-- XGBoost results will be populated here -->
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-4">
-                            <div class="model-result-card" id="rfResults">
-                                <div class="model-header">
-                                    <i class="fas fa-forest"></i>
-                                    <h5>Random Forest</h5>
-                                </div>
-                                <div class="model-content">
-                                    <!-- Random Forest results will be populated here -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Summary Section -->
-                    <div class="row mt-4">
-                        <div class="col-12">
-                            <div class="summary-card">
-                                <h5>
-                                    <i class="fas fa-lightbulb me-2"></i>
-                                    Tóm tắt và khuyến nghị
-                                </h5>
-                                <div id="summaryContent">
-                                    <!-- Summary will be populated here -->
-                                </div>
-                            </div>
-                        </div>
+                <div class="input-group-custom model-select">
+                    <label class="input-label">Mô hình</label>
+                    <select id="modelSelect" class="custom-select">
+                        <option value="all">Tất cả mô hình (Khuyến nghị)</option>
+                        <option value="cnn">CNN (Khuyến nghị)</option>
+                        <option value="xgb">XGBoost</option>
+                        <option value="rf">Random Forest</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Settings Row -->
+            <div class="settings-row">
+                <div class="slider-group">
+                    <label class="input-label">Ngưỡng tin cậy: <span id="thresholdValue">50%</span></label>
+                    <input type="range" id="thresholdRange" class="custom-range" min="10" max="90" value="50">
+                </div>
+
+                <div class="slider-group">
+                    <label class="input-label">Dataset</label>
+                    <select id="datasetSelect" class="custom-select">
+                        <option value="dataset_1">Dataset 1</option>
+                        <option value="dataset_2">Dataset 2</option>
+                        <option value="dataset_3">Dataset 3</option>
+                    </select>
+                </div>
+
+                <div class="slider-group">
+                    <label class="input-label">Loại dữ liệu</label>
+                    <div class="btn-group-custom">
+                        <input type="radio" name="numerical" id="numericalTrue" value="true" checked>
+                        <label for="numericalTrue" class="btn-radio">Numerical</label>
+
+                        <input type="radio" name="numerical" id="numericalFalse" value="false">
+                        <label for="numericalFalse" class="btn-radio">Non-numerical</label>
                     </div>
                 </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="submit-section">
+                <button type="submit" class="submit-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2" fill="none" />
+                        <path d="m21 21-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                    </svg>
+                    Kiểm tra URL
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Loading Section -->
+    <div id="loadingSection" class="loading-overlay" style="display: none;">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <h3>Đang phân tích URL...</h3>
+            <p>Chạy qua nhiều mô hình AI để đảm bảo độ chính xác</p>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="loadingProgress"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Section -->
+    <div id="resultsSection" class="results-container" style="display: none;">
+        <div class="results-header">
+            <h2>Kết quả phân tích</h2>
+            <p>Đánh giá toàn diện từ nhiều mô hình AI</p>
+        </div>
+
+        <!-- Overall Result Card -->
+        <div id="overallResult" class="overall-card">
+            <!-- Will be populated dynamically -->
+        </div>
+
+        <!-- Chart Section -->
+        <div class="chart-section">
+            <h3>Biểu đồ so sánh mô hình</h3>
+            <div class="chart-wrapper">
+                <canvas id="comparisonChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Model Details -->
+        <div class="model-details">
+            <h3>Chi tiết từng mô hình</h3>
+            <div id="modelResultsGrid" class="model-grid">
+                <!-- Model cards will be populated here -->
+            </div>
+        </div>
+
+        <!-- Summary -->
+        <div class="summary-section">
+            <h3>Tóm tắt và khuyến nghị</h3>
+            <div id="summaryContent" class="summary-card">
+                <!-- Summary will be populated here -->
             </div>
         </div>
     </div>
 </div>
+
+<style>
+    /* CSS Variables for consistent theming */
+    :root {
+        --primary-purple: #6366f1;
+        --secondary-purple: #8b5cf6;
+        --dark-purple: #4c1d95;
+        --light-purple: rgba(139, 92, 246, 0.1);
+        --white: #ffffff;
+        --text-light: rgba(255, 255, 255, 0.9);
+        --text-muted: rgba(255, 255, 255, 0.7);
+        --border-color: rgba(255, 255, 255, 0.2);
+        --success-color: #10b981;
+        --warning-color: #f59e0b;
+        --danger-color: #ef4444;
+    }
+
+    /* Base Styles */
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+    }
+
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        color: var(--white);
+    }
+
+    .main-container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    /* Header Section */
+    .header-section {
+        text-align: center;
+        margin-bottom: 3rem;
+    }
+
+    .search-icon {
+        width: 100px;
+        height: 100px;
+        margin: 0 auto 2rem;
+        color: var(--text-light);
+        opacity: 0.8;
+    }
+
+    .main-title {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: var(--white);
+        margin-bottom: 1rem;
+        line-height: 1.2;
+    }
+
+    .main-subtitle {
+        font-size: 1.125rem;
+        color: var(--text-muted);
+        max-width: 600px;
+        margin: 0 auto;
+        line-height: 1.5;
+    }
+
+    /* Form Container */
+    .form-container {
+        width: 100%;
+        max-width: 800px;
+    }
+
+    .input-row {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .settings-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    /* Input Groups */
+    .input-group-custom {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .input-label {
+        color: var(--text-light);
+        font-size: 0.95rem;
+        font-weight: 500;
+        margin-bottom: 0.75rem;
+        display: block;
+    }
+
+    .input-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .input-icon {
+        position: absolute;
+        left: 1rem;
+        color: var(--text-muted);
+        z-index: 2;
+    }
+
+    input[type="url"] {
+        width: 100%;
+        background: var(--white);
+        border: 2px solid transparent;
+        border-radius: 12px;
+        padding: 1rem 1rem 1rem 3rem;
+        font-size: 1rem;
+        color: #374151;
+        transition: all 0.3s ease;
+    }
+
+    input[type="url"]:focus {
+        outline: none;
+        border-color: var(--primary-purple);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    input[type="url"]::placeholder {
+        color: #9ca3af;
+    }
+
+    /* Custom Select */
+    .custom-select {
+        width: 100%;
+        background: var(--white);
+        border: 2px solid transparent;
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        font-size: 1rem;
+        color: #374151;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .custom-select:focus {
+        outline: none;
+        border-color: var(--primary-purple);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    /* Custom Range Slider */
+    .custom-range {
+        width: 100%;
+        height: 6px;
+        border-radius: 3px;
+        background: var(--border-color);
+        outline: none;
+        -webkit-appearance: none;
+        appearance: none;
+    }
+
+    .custom-range::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: var(--white);
+        cursor: pointer;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    .custom-range::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: var(--white);
+        cursor: pointer;
+        border: none;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Button Group for Radio Selection */
+    .btn-group-custom {
+        display: flex;
+        border-radius: 12px;
+        overflow: hidden;
+        background: var(--white);
+        border: 2px solid transparent;
+    }
+
+    .btn-group-custom input[type="radio"] {
+        display: none;
+    }
+
+    .btn-radio {
+        flex: 1;
+        padding: 0.75rem 1rem;
+        background: transparent;
+        color: #374151;
+        border: none;
+        cursor: pointer;
+        font-size: 0.95rem;
+        font-weight: 500;
+        text-align: center;
+        transition: all 0.3s ease;
+        border-right: 1px solid #e5e7eb;
+    }
+
+    .btn-radio:last-child {
+        border-right: none;
+    }
+
+    .btn-group-custom input[type="radio"]:checked+.btn-radio {
+        background: var(--primary-purple);
+        color: var(--white);
+    }
+
+    .btn-group-custom:focus-within {
+        border-color: var(--primary-purple);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    /* Submit Button */
+    .submit-section {
+        text-align: center;
+        margin-top: 2rem;
+    }
+
+    .submit-btn {
+        background: var(--white);
+        color: var(--primary-purple);
+        border: none;
+        border-radius: 12px;
+        padding: 1rem 2.5rem;
+        font-size: 1.1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .submit-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    }
+
+    .submit-btn:active {
+        transform: translateY(0);
+    }
+
+    /* Loading Overlay */
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(102, 126, 234, 0.95);
+        backdrop-filter: blur(10px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+
+    .loading-content {
+        text-align: center;
+        color: var(--white);
+    }
+
+    .loading-spinner {
+        width: 60px;
+        height: 60px;
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        border-top: 4px solid var(--white);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 1.5rem;
+    }
+
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+
+    .loading-content h3 {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .loading-content p {
+        color: var(--text-muted);
+        margin-bottom: 2rem;
+    }
+
+    .progress-bar-container {
+        width: 300px;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 2px;
+        margin: 0 auto;
+        overflow: hidden;
+    }
+
+    .progress-bar {
+        height: 100%;
+        background: var(--white);
+        border-radius: 2px;
+        width: 0%;
+        transition: width 0.3s ease;
+    }
+
+    /* Results Container */
+    .results-container {
+        width: 100%;
+        max-width: 1000px;
+        margin-top: 2rem;
+    }
+
+    .results-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    .results-header h2 {
+        font-size: 2rem;
+        color: var(--white);
+        margin-bottom: 0.5rem;
+    }
+
+    .results-header p {
+        color: var(--text-muted);
+    }
+
+    /* Overall Result Card */
+    .overall-card {
+        background: var(--white);
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        text-align: center;
+        color: #374151;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Chart Section */
+    .chart-section {
+        background: var(--white);
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        color: #374151;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    .chart-section h3 {
+        margin-bottom: 1.5rem;
+        color: #1f2937;
+        text-align: center;
+    }
+
+    .chart-wrapper {
+        position: relative;
+        height: 400px;
+    }
+
+    /* Model Grid */
+    .model-details {
+        margin-bottom: 2rem;
+    }
+
+    .model-details h3 {
+        color: var(--white);
+        margin-bottom: 1.5rem;
+        text-align: center;
+    }
+
+    .model-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .model-card {
+        background: var(--white);
+        border-radius: 12px;
+        padding: 1.5rem;
+        color: #374151;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        transition: all 0.3s ease;
+    }
+
+    .model-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+    }
+
+    .model-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #f1f5f9;
+    }
+
+    .model-icon {
+        width: 45px;
+        height: 45px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1rem;
+        font-size: 1.5rem;
+        color: white;
+    }
+
+    .model-name {
+        flex: 1;
+    }
+
+    .model-name h4 {
+        margin: 0 0 0.25rem 0;
+        color: #1f2937;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+
+    .model-result {
+        font-size: 0.9rem;
+        font-weight: 600;
+        padding: 0.25rem 0.5rem;
+        border-radius: 6px;
+    }
+
+    .model-result.safe {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .model-result.danger {
+        background: #fef2f2;
+        color: #dc2626;
+    }
+
+    .prob-bars {
+        margin-bottom: 1rem;
+    }
+
+    .prob-item {
+        margin-bottom: 1rem;
+    }
+
+    .prob-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+
+    .prob-label {
+        font-weight: 500;
+        color: #374151;
+    }
+
+    .prob-label.active {
+        color: #1f2937;
+        font-weight: 600;
+    }
+
+    .prob-value {
+        font-size: 0.85rem;
+        font-weight: 600;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+    }
+
+    .prob-value.active {
+        color: white;
+    }
+
+    .prob-value.success {
+        background: var(--success-color);
+    }
+
+    .prob-value.warning {
+        background: var(--warning-color);
+    }
+
+    .prob-value.danger {
+        background: var(--danger-color);
+    }
+
+    .prob-value.inactive {
+        background: #f1f5f9;
+        color: #64748b;
+    }
+
+    .prob-bar {
+        height: 6px;
+        background: #f1f5f9;
+        border-radius: 3px;
+        overflow: hidden;
+    }
+
+    .prob-fill {
+        height: 100%;
+        border-radius: 3px;
+        transition: width 0.6s ease;
+    }
+
+    .prob-fill.success {
+        background: linear-gradient(90deg, var(--success-color), #34d399);
+    }
+
+    .prob-fill.warning {
+        background: linear-gradient(90deg, var(--warning-color), #fbbf24);
+    }
+
+    .prob-fill.danger {
+        background: linear-gradient(90deg, var(--danger-color), #f87171);
+    }
+
+    .prob-fill.inactive {
+        background: #d1d5db;
+    }
+
+    /* Summary Section */
+    .summary-section h3 {
+        color: var(--white);
+        margin-bottom: 1.5rem;
+        text-align: center;
+    }
+
+    .summary-card {
+        background: var(--white);
+        border-radius: 16px;
+        padding: 2rem;
+        color: #374151;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .summary-item h6 {
+        color: #64748b;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+    }
+
+    .summary-item p {
+        color: #1f2937;
+        font-weight: 600;
+        font-size: 1.1rem;
+        margin: 0;
+        display: flex;
+        align-items: center;
+    }
+
+    .recommendation {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 1.5rem;
+        border-left: 4px solid var(--primary-purple);
+    }
+
+    .recommendation h6 {
+        color: #1f2937;
+        margin-bottom: 0.75rem;
+        font-size: 1rem;
+        font-weight: 600;
+    }
+
+    .recommendation p {
+        color: #475569;
+        margin: 0;
+        line-height: 1.6;
+    }
+
+    /* Alert Styles */
+    .alert {
+        border-radius: 12px;
+        border: none;
+        padding: 1rem 1.25rem;
+        font-weight: 500;
+        margin-bottom: 1.5rem;
+    }
+
+    .alert-success {
+        background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+        color: #166534;
+    }
+
+    .alert-warning {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        color: #92400e;
+    }
+
+    .alert-danger {
+        background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%);
+        color: #dc2626;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .main-title {
+            font-size: 2rem;
+        }
+
+        .input-row {
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        .settings-row {
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        .model-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .main-container {
+            padding: 1rem;
+        }
+
+        .summary-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .main-title {
+            font-size: 1.75rem;
+        }
+
+        .main-subtitle {
+            font-size: 1rem;
+        }
+
+        .submit-btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .chart-wrapper {
+            height: 300px;
+        }
+    }
+</style>
+
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('multiModelForm');
-    const thresholdRange = document.getElementById('thresholdRange');
-    const thresholdValue = document.getElementById('thresholdValue');
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.getElementById('multiModelForm');
+        const thresholdRange = document.getElementById('thresholdRange');
+        const thresholdValue = document.getElementById('thresholdValue');
 
-    thresholdRange.addEventListener('input', function() {
-        thresholdValue.textContent = this.value + '%';
+        // Update threshold display
+        thresholdRange.addEventListener('input', function () {
+            thresholdValue.textContent = this.value + '%';
+        });
+
+        // Form submission
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            performMultiModelPrediction();
+        });
     });
 
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        performMultiModelPrediction();
-    });
-});
 
-function performMultiModelPrediction() {
-    const url = document.getElementById('urlInput').value;
-    const featureType = document.getElementById('featureTypeSelect').value;
+    function performMultiModelPrediction() {
+        const url = document.getElementById('urlInput').value;
+        const modelSelect = document.getElementById('modelSelect').value;
+        const dataset = document.getElementById('datasetSelect').value;
+        const threshold = parseFloat(document.getElementById('thresholdRange').value) / 100;
+        const numerical = document.querySelector('input[name="numerical"]:checked').value === 'true';
 
-    if (!url) {
-        showAlert('Vui lòng nhập URL.', 'warning');
-        return;
-    }
 
-    document.getElementById('loadingSection').style.display = 'block';
-    document.getElementById('resultsSection').style.display = 'none';
-
-    fetch('/api/predict-multi-model', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            url: url,
-            numerical: featureType === 'numerical'
-        })
-    })
-    .then(response => {
-        if (!response.ok) {
-            return response.json().then(err => { throw new Error(err.error || 'Lỗi không xác định từ server.'); });
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (data.error) {
-            showAlert(data.error, 'danger');
-        } else {
-            displayMultiModelResults(data);
-        }
-    })
-    .catch(error => {
-        showAlert('Có lỗi xảy ra khi so sánh mô hình: ' + error.message, 'danger');
-        console.error('Error:', error);
-    })
-    .finally(() => {
-        document.getElementById('loadingSection').style.display = 'none';
-    });
-}
-
-function displayMultiModelResults(data) {
-    const resultsSection = document.getElementById('resultsSection');
-    const modelNames = ['CNN', 'XGB', 'RF'];
-    const results = data.comparison_results;
-
-    let safeModelCount = 0;
-    let bestModel = { name: '', confidence: -1 };
-
-    for (const model_name in results) {
-        const result = results[model_name];
-        const cardId = `${model_name.toLowerCase()}Results`;
-        const card = document.getElementById(cardId);
-        if (!card) return;
-
-        const contentDiv = card.querySelector('.model-content');
-        contentDiv.innerHTML = ''; // Clear previous results
-
-        if (result.error) {
-            contentDiv.innerHTML = `<div class="alert alert-danger p-2">Lỗi: ${result.error}</div>`;
+        if (!url) {
+            showAlert('Vui lòng nhập URL cần kiểm tra.', 'warning');
             return;
         }
 
-        const labels = result.predicted_labels;
-        const isMalicious = labels.phishing || labels.defacement || labels.malware;
-        if (!isMalicious) safeModelCount++;
+        // Show loading
+        document.getElementById('loadingSection').style.display = 'flex';
+        document.getElementById('resultsSection').style.display = 'none';
 
-        const overallResult = `<div class="overall-result mb-3 ${!isMalicious ? 'text-success' : 'text-danger'}">
-            <i class="fas ${!isMalicious ? 'fa-shield-alt' : 'fa-exclamation-triangle'} me-2"></i>
-            <strong>${!isMalicious ? 'An Toàn' : 'Nguy Hiểm'}</strong>
-        </div>`;
-        contentDiv.innerHTML += overallResult;
+        // Animate progress bar
+        let progress = 0;
+        const progressBar = document.getElementById('loadingProgress');
+        const progressInterval = setInterval(() => {
+            progress += Math.random() * 15;
+            if (progress > 90) progress = 90;
+            progressBar.style.width = progress + '%';
+        }, 200);
 
-        const labelKeys = ['Benign', 'Defacement', 'Malware', 'Phishing'];
-        const probabilities = result.probabilities;
-        let maxProb = -1;
+        // API call
+        fetch('/api/predict-multi-model', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                url: url,
+                dataset: dataset,
+                threshold: threshold,
+                numerical: numerical
+            })
+        })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw new Error(err.error || 'Lỗi không xác định từ server.');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                clearInterval(progressInterval);
+                progressBar.style.width = '100%';
 
-        probabilities.forEach((prob, i) => {
-            const percentage = (prob * 100).toFixed(1);
-            if (prob > maxProb) maxProb = prob;
-            contentDiv.innerHTML += `
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                    <span>${labelKeys[i]}</span>
-                    <span class="badge bg-light text-dark">${percentage}%</span>
-                </div>
-                <div class="progress mb-2" style="height: 6px;">
-                    <div class="progress-bar" style="width: ${percentage}%;"></div>
-                </div>
-            `;
+                setTimeout(() => {
+                    document.getElementById('loadingSection').style.display = 'none';
+                    if (data.error) {
+                        showAlert('Lỗi: ' + data.error, 'danger');
+                    } else {
+                        displayResults(data);
+                    }
+                }, 1000);
+            })
+            .catch(error => {
+                clearInterval(progressInterval);
+                document.getElementById('loadingSection').style.display = 'none';
+                showAlert('Có lỗi xảy ra: ' + error.message, 'danger');
+                console.error('Error:', error);
+            });
+    }
+
+    function displayResults(data) {
+        const results = data.comparison_results;
+
+
+        // Show results section
+        document.getElementById('resultsSection').style.display = 'block';
+
+
+        // Display overall result
+        displayOverallResult(results);
+
+        // Create chart
+        createComparisonChart(results);
+
+        // Display model details
+        displayModelDetails(results);
+
+
+        // Generate summary
+        generateSummary(results);
+
+        // Scroll to results
+        document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function displayOverallResult(results) {
+        const overallCard = document.getElementById('overallResult');
+
+        let safeCount = 0;
+        let totalCount = 0;
+
+        results.forEach(result => {
+            if (!result.error) {
+                totalCount++;
+                const labels = result.predicted_labels;
+                if (labels && labels.benign === 1) {
+                    safeCount++;
+                }
+            }
         });
 
-        if (maxProb > bestModel.confidence) {
-            bestModel = { name: model_name, confidence: maxProb };
+        if (totalCount === 0) {
+            overallCard.innerHTML = '<p class="text-muted">Không có kết quả để hiển thị.</p>';
+            return;
         }
 
-        contentDiv.innerHTML += `<div class="text-muted small mt-3 text-end">Thời gian: ${(result.execution_time_ms).toFixed(0)} ms</div>`;
-    }
+        const isSafe = safeCount > totalCount / 2;
+        const confidence = Math.round((safeCount / totalCount) * 100);
 
-    createComparisonChart(results);
-    generateSummary(safeModelCount, bestModel.name, modelNames.length);
-    resultsSection.style.display = 'block';
-}
-
-function createComparisonChart(results) {
-    const ctx = document.getElementById('comparisonChart').getContext('2d');
-    const labels = ['Benign', 'Defacement', 'Malware', 'Phishing'];
-    const modelColors = {
-        'CNN': 'rgba(255, 99, 132, 0.7)',
-        'XGB': 'rgba(54, 162, 235, 0.7)',
-        'RF': 'rgba(75, 192, 192, 0.7)'
-    };
-
-    const datasets = Object.keys(results).map(model_name => {
-        const result = results[model_name];
-        if (result.error) return null;
-
-        const upper_model_name = model_name.toUpperCase();
-
-        return {
-            label: upper_model_name,
-            data: result.probabilities,
-            backgroundColor: modelColors[upper_model_name].replace('0.7', '0.2'),
-            borderColor: modelColors[upper_model_name],
-            pointBackgroundColor: modelColors[upper_model_name],
-        };
-    }).filter(ds => ds !== null);
-
-    if (window.myRadarChart) {
-        window.myRadarChart.destroy();
-    }
-
-    window.myRadarChart = new Chart(ctx, {
-        type: 'radar',
-        data: { labels: labels, datasets: datasets },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: { r: { beginAtZero: true, max: 1 } },
-            plugins: { legend: { position: 'top' } }
-        }
-    });
-}
-
-function generateSummary(safeModels, bestModelName, totalModels) {
-    const summaryContent = document.getElementById('summaryContent');
-    const consensus = safeModels / totalModels;
-    
-    let consensusText, consensusClass, recommendation;
-    
-    if (consensus >= 0.67) {
-        consensusText = 'Đồng thuận cao';
-        consensusClass = 'text-success';
-        recommendation = safeModels === totalModels ? 
-            'Tất cả các mô hình đều đánh giá URL này là an toàn.' :
-            'Đa số mô hình đánh giá URL này là an toàn.';
-    } else if (consensus >= 0.33) {
-        consensusText = 'Kết quả hỗn hợp';
-        consensusClass = 'text-warning';
-        recommendation = 'Các mô hình có ý kiến khác nhau về URL này. Nên thận trọng khi truy cập.';
-    } else {
-        consensusText = 'Đồng thuận thấp';
-        consensusClass = 'text-danger';
-        recommendation = 'Đa số mô hình đánh giá URL này có nguy cơ bảo mật. Không nên truy cập.';
-    }
-    
-    summaryContent.innerHTML = `
-        <div class="row">
-            <div class="col-md-6">
-                <div class="summary-item">
-                    <h6>Mức độ đồng thuận</h6>
-                    <p class="${consensusClass} fw-semibold">${consensusText} (${safeModels}/${totalModels} mô hình)</p>
-                </div>
+        overallCard.innerHTML = `
+        <div style="text-align: center;">
+            <div style="font-size: 4rem; margin-bottom: 1rem;">
+                ${isSafe ? '🛡️' : '⚠️'}
             </div>
-            <div class="col-md-6">
-                <div class="summary-item">
-                    <h6>Mô hình hiệu quả nhất</h6>
-                    <p class="fw-semibold">${bestModelName} (độ tin cậy cao nhất)</p>
-                </div>
+            <h2 style="color: ${isSafe ? '#10b981' : '#ef4444'}; margin-bottom: 0.5rem;">
+                ${isSafe ? 'URL AN TOÀN' : 'PHÁT HIỆN NGUY CƠ'}
+            </h2>
+            <p style="font-size: 1.2rem; color: #6b7280; margin-bottom: 1rem;">
+                ${safeCount}/${totalCount} mô hình đánh giá là an toàn
+            </p>
+            <div style="background: #f3f4f6; border-radius: 8px; padding: 1rem;">
+                <strong>Độ tin cậy: ${confidence}%</strong>
             </div>
         </div>
-        <div class="recommendation mt-3">
-            <h6>Khuyến nghị</h6>
+    `;
+    }
+
+    function createComparisonChart(results) {
+        const ctx = document.getElementById('comparisonChart').getContext('2d');
+        const labels = ['An toàn', 'Defacement', 'Malware', 'Phishing'];
+
+
+        const modelColors = {
+            'CNN_NUM': '#3b82f6',
+            'CNN_NON': '#3b82f6',
+            'XGB_NUM': '#10b981',
+            'XGB_NON': '#10b981',
+            'RF_NUM': '#f59e0b',
+            'RF_NON': '#f59e0b'
+        };
+
+        const datasets = results.map((result, index) => {
+            if (result.error) return null;
+
+            const color = modelColors[result.model_name] || '#64748b';
+            const opacity = result.model_name.includes('NON') ? '60' : '90';
+
+            return {
+                label: getModelDisplayName(result.model_name),
+                data: result.probabilities,
+                backgroundColor: color + '20',
+                borderColor: color + opacity,
+                pointBackgroundColor: color,
+                borderWidth: 2,
+                pointRadius: 4
+            };
+        }).filter(ds => ds !== null);
+
+        if (window.myRadarChart) {
+            window.myRadarChart.destroy();
+        }
+
+        window.myRadarChart = new Chart(ctx, {
+            type: 'radar',
+            data: { labels, datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    r: {
+                        beginAtZero: true,
+                        max: 1,
+                        ticks: {
+                            stepSize: 0.2,
+                            color: '#64748b'
+                        },
+                        grid: {
+                            color: '#e2e8f0'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 20,
+                            color: '#1f2937'
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: '#1f2937',
+                        titleColor: '#ffffff',
+                        bodyColor: '#ffffff',
+                        cornerRadius: 8,
+                        callbacks: {
+                            label: function (context) {
+                                return context.dataset.label + ': ' + (context.parsed.r * 100).toFixed(1) + '%';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function displayModelDetails(results) {
+        const grid = document.getElementById('modelResultsGrid');
+        grid.innerHTML = '';
+
+        const modelInfo = {
+            'CNN_NUM': { name: 'CNN (Numerical)', icon: '🧠', color: '#3b82f6' },
+            'CNN_NON': { name: 'CNN (Non-numerical)', icon: '🧠', color: '#3b82f6' },
+            'XGB_NUM': { name: 'XGBoost (Numerical)', icon: '🌳', color: '#10b981' },
+            'XGB_NON': { name: 'XGBoost (Non-numerical)', icon: '🌳', color: '#10b981' },
+            'RF_NUM': { name: 'Random Forest (Numerical)', icon: '🌲', color: '#f59e0b' },
+            'RF_NON': { name: 'Random Forest (Non-numerical)', icon: '🌲', color: '#f59e0b' }
+
+        };
+
+        results.forEach(result => {
+            if (result.error) return;
+
+            const info = modelInfo[result.model_name] || {
+                name: result.model_name,
+                icon: '🤖',
+                color: '#64748b'
+            };
+            const labels = result.predicted_labels;
+            const probabilities = result.probabilities;
+
+            const isSafe = labels.benign === 1;
+            const maxProb = Math.max(...probabilities);
+
+            const card = document.createElement('div');
+            card.className = 'model-card';
+
+            const labelNames = ['benign', 'defacement', 'malware', 'phishing'];
+            const labelDisplayNames = ['An toàn', 'Defacement', 'Malware', 'Phishing'];
+            const labelClasses = ['success', 'warning', 'danger', 'danger'];
+
+            let probBars = '';
+            labelNames.forEach((labelName, i) => {
+                const prob = probabilities[i] || 0;
+                const percentage = (prob * 100).toFixed(1);
+                const isActive = labels[labelName] === 1;
+
+                probBars += `
+                <div class="prob-item">
+                    <div class="prob-header">
+                        <span class="prob-label ${isActive ? 'active' : ''}">${labelDisplayNames[i]}</span>
+                        <span class="prob-value ${isActive ? labelClasses[i] : 'inactive'}">${percentage}%</span>
+                    </div>
+                    <div class="prob-bar">
+                        <div class="prob-fill ${isActive ? labelClasses[i] : 'inactive'}" style="width: ${percentage}%;"></div>
+                    </div>
+                </div>
+            `;
+            });
+
+            card.innerHTML = `
+            <div class="model-header">
+                <div class="model-icon" style="background-color: ${info.color};">
+                    ${info.icon}
+                </div>
+                <div class="model-name">
+                    <h4>${info.name}</h4>
+                    <div class="model-result ${isSafe ? 'safe' : 'danger'}">
+                        ${isSafe ? 'AN TOÀN' : 'NGUY HIỂM'}
+                    </div>
+                </div>
+            </div>
+            <div class="prob-bars">
+                ${probBars}
+            </div>
+            <div style="text-align: right; color: #64748b; font-size: 0.9rem; font-weight: 500;">
+                Độ tin cậy: ${(maxProb * 100).toFixed(1)}%
+            </div>
+        `;
+
+            grid.appendChild(card);
+        });
+    }
+
+    function generateSummary(results) {
+        const summaryContent = document.getElementById('summaryContent');
+
+        let safeCount = 0;
+        let totalCount = 0;
+        let bestModel = { name: '', confidence: 0 };
+        let avgConfidence = 0;
+
+        results.forEach(result => {
+            if (!result.error) {
+                totalCount++;
+                const labels = result.predicted_labels;
+                if (labels && labels.benign === 1) {
+                    safeCount++;
+                }
+
+                const maxProb = Math.max(...result.probabilities);
+                avgConfidence += maxProb;
+
+                if (maxProb > bestModel.confidence) {
+                    bestModel = {
+                        name: getModelDisplayName(result.model_name),
+                        confidence: maxProb
+                    };
+                }
+            }
+        });
+
+        if (totalCount === 0) {
+            summaryContent.innerHTML = '<p class="text-muted">Không có kết quả để tóm tắt.</p>';
+            return;
+        }
+
+        avgConfidence = avgConfidence / totalCount;
+        const consensus = safeCount / totalCount;
+
+        let consensusText, consensusClass, recommendation, consensusIcon;
+
+        if (consensus >= 0.67) {
+            consensusText = 'Đồng thuận cao';
+            consensusClass = 'color: #10b981';
+            consensusIcon = '✅';
+            recommendation = safeCount === totalCount ?
+                'Tất cả mô hình đều đánh giá URL này là an toàn. Độ tin cậy cao trong đánh giá an toàn.' :
+                'Đa số mô hình đánh giá URL này là an toàn. Có thể truy cập với độ tin cậy cao.';
+        } else if (consensus >= 0.33) {
+            consensusText = 'Kết quả hỗn hợp';
+            consensusClass = 'color: #f59e0b';
+            consensusIcon = '⚠️';
+            recommendation = 'Các mô hình có kết quả trái chiều. Cần thận trọng và xem xét thêm thông tin trước khi quyết định.';
+        } else {
+            consensusText = 'Đồng thuận thấp';
+            consensusClass = 'color: #ef4444';
+            consensusIcon = '🚨';
+            recommendation = 'Đa số mô hình phát hiện nguy cơ tiềm ẩn. Khuyến nghị mạnh không nên truy cập URL này.';
+        }
+
+        summaryContent.innerHTML = `
+        <div class="summary-grid">
+            <div class="summary-item">
+                <h6>Đồng thuận mô hình</h6>
+                <p style="${consensusClass}">
+                    <span class="me-2">${consensusIcon}</span>
+                    ${consensusText} (${safeCount}/${totalCount})
+                </p>
+            </div>
+            <div class="summary-item">
+                <h6>Mô hình tin cậy nhất</h6>
+                <p>
+                    <span class="me-2">🎯</span>
+                    ${bestModel.name}
+                </p>
+            </div>
+            <div class="summary-item">
+                <h6>Độ tin cậy trung bình</h6>
+                <p>
+                    <span class="me-2">📊</span>
+                    ${(avgConfidence * 100).toFixed(1)}%
+                </p>
+            </div>
+            <div class="summary-item">
+                <h6>Đánh giá tổng thể</h6>
+                <p style="${consensus >= 0.5 ? 'color: #10b981' : 'color: #ef4444'}">
+                    <span class="me-2">${consensus >= 0.5 ? '🛡️' : '⚠️'}</span>
+                    ${consensus >= 0.5 ? 'Có thể an toàn' : 'Nguy cơ tiềm ẩn'}
+                </p>
+            </div>
+        </div>
+        <div class="recommendation">
+            <h6>
+                <span class="me-2">💡</span>
+                Khuyến nghị
+            </h6>
             <p>${recommendation}</p>
         </div>
     `;
-}
+    }
 
-function showAlert(message, type) {
-    const container = document.querySelector('.glass-card');
-    const existingAlert = container.querySelector('.alert-dismissible');
-    if(existingAlert) existingAlert.remove();
+    function getModelDisplayName(modelName) {
+        const modelNames = {
+            'CNN_NUM': 'CNN (Numerical)',
+            'CNN_NON': 'CNN (Non-numerical)',
+            'XGB_NUM': 'XGBoost (Numerical)',
+            'XGB_NON': 'XGBoost (Non-numerical)',
+            'RF_NUM': 'Random Forest (Numerical)',
+            'RF_NON': 'Random Forest (Non-numerical)'
+        };
+        return modelNames[modelName] || modelName;
+    }
 
-    const alertDiv = document.createElement('div');
-    alertDiv.className = `alert alert-${type} alert-dismissible fade show mt-3`;
-    alertDiv.setAttribute('role', 'alert');
-    alertDiv.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    function showAlert(message, type) {
+        const container = document.querySelector('.form-container');
+        const existingAlert = container.querySelector('.alert');
+        if (existingAlert) existingAlert.remove();
+
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type}`;
+        alertDiv.innerHTML = `
+        <div style="display: flex; align-items: center;">
+            <span style="margin-right: 0.5rem;">
+                ${type === 'success' ? '✅' : type === 'warning' ? '⚠️' : '❌'}
+            </span>
+            <span>${message}</span>
+        </div>
     `;
-    
-    container.insertBefore(alertDiv, container.querySelector('form'));
-}
+
+        container.insertBefore(alertDiv, container.querySelector('form'));
+
+        // Auto dismiss after 5 seconds
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.style.opacity = '0';
+                setTimeout(() => alertDiv.remove(), 300);
+            }
+        }, 5000);
+    }
 </script>
 {% endblock %}
