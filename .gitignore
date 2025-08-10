@@ -219,6 +219,7 @@ cython_debug/
 /multi-labels-urls-firebase-db-firebase-adminsdk-fbsvc-9e89a61f22.json
 /models/CNN_MODEL_WITH_MULTI_LABELS_79_FEATURES.h5
 /models/CNN_MODEL_WITH_MULTI_LABELS_21_FEATURES.keras
+/models/dataset_1/BERT_MODEL_ON_NON_NUMERICAL_FEATURES.pth
 
 # Firebase credentials
 configs/firebase-credentials.json

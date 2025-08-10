@@ -7,22 +7,26 @@ import re
 import joblib
 import logging
 import time
+import torch
 
 from functools import wraps
 from tensorflow.keras.models import load_model
-from scripts.url_features_extractor import URL_EXTRACTOR
 from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
-# Ensure project root (parent of `scripts`) is on sys.path so `configs` can be imported
+from transformers import BertTokenizer, BertModel
+
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 from configs.config import Config
+from scripts.url_features_extractor import URL_EXTRACTOR
+from scripts.transformers_model import Transformer
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
+
 
 def timer(func):
     """Record execution time of any functions"""
@@ -46,6 +50,7 @@ def timer(func):
 
     return wrapper
 
+
 class URL_PREDICTOR(object):
     # Caches to ensure single-load per process
     _MODEL_CACHE = {}
@@ -56,17 +61,18 @@ class URL_PREDICTOR(object):
     def preload(cls, models_to_load=None):
         """Optionally preload selected models once and cache them.
 
-        models_to_load can include: 'cnn_num', 'cnn_non', 'xgb_num', 'xgb_non', 'rf_num', 'rf_non'
+        models_to_load can include: 'cnn_num', 'cnn_non', 'xgb_num', 'xgb_non', 'rf_num', 'rf_non, bert_non'
         """
         if not models_to_load:
             return
         key_to_path = {
-            'cnn_num': Config.CNN_NUMERICAL_MODEL_PATH,
-            'cnn_non': Config.CNN_NON_NUMERICAL_MODEL_PATH,
-            'xgb_num': Config.XGB_NUMERICAL_MODEL_PATH,
-            'xgb_non': Config.XGB_NON_NUMERICAL_MODEL_PATH,
-            'rf_num': Config.RF_NUMERICAL_MODEL_PATH,
-            'rf_non': Config.RF_NON_NUMERICAL_MODEL_PATH,
+            "cnn_num": Config.CNN_NUMERICAL_MODEL_PATH,
+            "cnn_non": Config.CNN_NON_NUMERICAL_MODEL_PATH,
+            "xgb_num": Config.XGB_NUMERICAL_MODEL_PATH,
+            "xgb_non": Config.XGB_NON_NUMERICAL_MODEL_PATH,
+            "rf_num": Config.RF_NUMERICAL_MODEL_PATH,
+            "rf_non": Config.RF_NON_NUMERICAL_MODEL_PATH,
+            "bert_non": Config.BERT_NON_NUMERICAL_MODEL_PATH,
         }
         # Temporary instance to reuse model_loader
         temp = cls.__new__(cls)
@@ -103,20 +109,35 @@ class URL_PREDICTOR(object):
             if not path or path in cls._VECTORIZER_CACHE:
                 continue
             URL_PREDICTOR.load_vectorizer(temp, path)
+
     @timer
     def __init__(self, url, enable_logging=False, preset_df=None):
         # Log and execution time informations
         self.exec_time = 0.0
         self.log_level = logging.INFO if enable_logging else logging.WARNING
         logging.getLogger().setLevel(self.log_level)
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # Attach cached models if already preloaded
-        self.CNN_NUMERICAL_MODEL = self._MODEL_CACHE.get(Config.CNN_NUMERICAL_MODEL_PATH)
-        self.CNN_NON_NUMERICAL_MODEL = self._MODEL_CACHE.get(Config.CNN_NON_NUMERICAL_MODEL_PATH)
-        self.XGB_NUMERICAL_MODEL = self._MODEL_CACHE.get(Config.XGB_NUMERICAL_MODEL_PATH)
-        self.XGB_NON_NUMERICAL_MODEL = self._MODEL_CACHE.get(Config.XGB_NON_NUMERICAL_MODEL_PATH)
+        self.CNN_NUMERICAL_MODEL = self._MODEL_CACHE.get(
+            Config.CNN_NUMERICAL_MODEL_PATH
+        )
+        self.CNN_NON_NUMERICAL_MODEL = self._MODEL_CACHE.get(
+            Config.CNN_NON_NUMERICAL_MODEL_PATH
+        )
+        self.XGB_NUMERICAL_MODEL = self._MODEL_CACHE.get(
+            Config.XGB_NUMERICAL_MODEL_PATH
+        )
+        self.XGB_NON_NUMERICAL_MODEL = self._MODEL_CACHE.get(
+            Config.XGB_NON_NUMERICAL_MODEL_PATH
+        )
+        self.BERT_NON_NUMERICAL_MODEL = self._MODEL_CACHE.get(
+            Config.BERT_NON_NUMERICAL_MODEL_PATH
+        )
         self.RF_NUMERICAL_MODEL = self._MODEL_CACHE.get(Config.RF_NUMERICAL_MODEL_PATH)
-        self.RF_NON_NUMERICAL_MODEL = self._MODEL_CACHE.get(Config.RF_NON_NUMERICAL_MODEL_PATH)
+        self.RF_NON_NUMERICAL_MODEL = self._MODEL_CACHE.get(
+            Config.RF_NON_NUMERICAL_MODEL_PATH
+        )
         self.scaler = self._SCALER_CACHE.get(Config.SCALER_PATH)
         self.cv2 = self._VECTORIZER_CACHE.get(Config.CNN_VECTORIZER_PATH)
         self.cv4 = self._VECTORIZER_CACHE.get(Config.XGB_RF_VECTORIZER_PATH)
@@ -127,21 +148,46 @@ class URL_PREDICTOR(object):
             self.df = preset_df
         else:
             self.df = self.extract_url_features_to_df()
-        self.y = self.df['label'] if 'label' in self.df.columns else None
+        self.y = self.df["label"] if "label" in self.df.columns else None
         self.ps = PorterStemmer()
         self.corpus = []
         self.predictions = None
         self.predicted_labels = None
 
     @timer
+    def predict_with_TF_BERT(self, threshold=None):
+        self.X5_pre_processing()
+        if self.BERT_NON_NUMERICAL_MODEL is None:
+            raise ValueError(
+                "BERT non-numerical model not loaded. Call URL_PREDICTOR.preload(['bert_non']) once, or set predictor.BERT_NON_NUMERICAL_MODEL."
+            )
+
+        self.BERT_NON_NUMERICAL_MODEL.eval()
+        with torch.no_grad():
+            logits = self.BERT_NON_NUMERICAL_MODEL(
+                self.input_ids,
+                self.attention_mask
+            )
+            # Multi-class → softmax
+            probs = torch.softmax(logits, dim=1).cpu().numpy()
+
+        self.predictions = probs
+        # Chuyển argmax -> one-hot vector để print_result không lỗi
+        one_hot_preds = np.zeros_like(probs, dtype=int)
+        one_hot_preds[np.arange(len(probs)), np.argmax(probs, axis=1)] = 1
+        self.predicted_labels = one_hot_preds
+
+    @timer
     def predict_with_RF(self, threshold=0.5, numerical=True):
         if numerical:
             self.X3_pre_processing()
             if self.RF_NUMERICAL_MODEL is None:
-                raise ValueError("RF numerical model not loaded. Call URL_PREDICTOR.preload(['rf_num']) once, or set predictor.RF_NUMERICAL_MODEL.")
+                raise ValueError(
+                    "RF numerical model not loaded. Call URL_PREDICTOR.preload(['rf_num']) once, or set predictor.RF_NUMERICAL_MODEL."
+                )
             # Align feature columns and order to match training
             try:
-                if hasattr(self.RF_NUMERICAL_MODEL, 'feature_names_in_'):
+                if hasattr(self.RF_NUMERICAL_MODEL, "feature_names_in_"):
                     expected = list(self.RF_NUMERICAL_MODEL.feature_names_in_)
                     for cname in expected:
                         if cname not in self.X3.columns:
@@ -149,11 +195,14 @@ class URL_PREDICTOR(object):
                     self.X3 = self.X3.reindex(columns=expected)
             except Exception:
                 pass
-            if hasattr(self.RF_NUMERICAL_MODEL, 'predict_proba'):
+            if hasattr(self.RF_NUMERICAL_MODEL, "predict_proba"):
                 self.predictions = self.RF_NUMERICAL_MODEL.predict_proba(self.X3)
                 # Nếu là multi-label, predict_proba trả về list các mảng, cần stack lại
                 if isinstance(self.predictions, list):
-                    self.predictions = np.stack([p[:, 1] if p.shape[1] == 2 else p for p in self.predictions], axis=1)
+                    self.predictions = np.stack(
+                        [p[:, 1] if p.shape[1] == 2 else p for p in self.predictions],
+                        axis=1,
+                    )
                 self.predicted_labels = (self.predictions > threshold).astype(int)
             else:
                 self.predictions = self.RF_NUMERICAL_MODEL.predict(self.X3)
@@ -161,11 +210,16 @@ class URL_PREDICTOR(object):
         else:
             self.X4_pre_processing()
             if self.RF_NON_NUMERICAL_MODEL is None:
-                raise ValueError("RF non-numerical model not loaded. Call URL_PREDICTOR.preload(['rf_non']) once, or set predictor.RF_NON_NUMERICAL_MODEL.")
-            if hasattr(self.RF_NON_NUMERICAL_MODEL, 'predict_proba'):
+                raise ValueError(
+                    "RF non-numerical model not loaded. Call URL_PREDICTOR.preload(['rf_non']) once, or set predictor.RF_NON_NUMERICAL_MODEL."
+                )
+            if hasattr(self.RF_NON_NUMERICAL_MODEL, "predict_proba"):
                 self.predictions = self.RF_NON_NUMERICAL_MODEL.predict_proba(self.X4)
                 if isinstance(self.predictions, list):
-                    self.predictions = np.stack([p[:, 1] if p.shape[1] == 2 else p for p in self.predictions], axis=1)
+                    self.predictions = np.stack(
+                        [p[:, 1] if p.shape[1] == 2 else p for p in self.predictions],
+                        axis=1,
+                    )
                 self.predicted_labels = (self.predictions > threshold).astype(int)
             else:
                 self.predictions = self.RF_NON_NUMERICAL_MODEL.predict(self.X4)
@@ -176,13 +230,17 @@ class URL_PREDICTOR(object):
         if numerical:
             self.X1_pre_processing()
             if self.CNN_NUMERICAL_MODEL is None:
-                raise ValueError("CNN numerical model not loaded. Call URL_PREDICTOR.preload(['cnn_num']) once, or set predictor.CNN_NUMERICAL_MODEL.")
+                raise ValueError(
+                    "CNN numerical model not loaded. Call URL_PREDICTOR.preload(['cnn_num']) once, or set predictor.CNN_NUMERICAL_MODEL."
+                )
             self.predictions = self.CNN_NUMERICAL_MODEL.predict(self.X1)
             self.predicted_labels = (self.predictions > threshold).astype(int)
         else:
             self.X2_pre_processing()
             if self.CNN_NON_NUMERICAL_MODEL is None:
-                raise ValueError("CNN non-numerical model not loaded. Call URL_PREDICTOR.preload(['cnn_non']) once, or set predictor.CNN_NON_NUMERICAL_MODEL.")
+                raise ValueError(
+                    "CNN non-numerical model not loaded. Call URL_PREDICTOR.preload(['cnn_non']) once, or set predictor.CNN_NON_NUMERICAL_MODEL."
+                )
             self.predictions = self.CNN_NON_NUMERICAL_MODEL.predict(self.X2)
             self.predicted_labels = (self.predictions > threshold).astype(int)
 
@@ -191,10 +249,12 @@ class URL_PREDICTOR(object):
         if numerical:
             self.X3_pre_processing()
             if self.XGB_NUMERICAL_MODEL is None:
-                raise ValueError("XGB numerical model not loaded. Call URL_PREDICTOR.preload(['xgb_num']) once, or set predictor.XGB_NUMERICAL_MODEL.")
+                raise ValueError(
+                    "XGB numerical model not loaded. Call URL_PREDICTOR.preload(['xgb_num']) once, or set predictor.XGB_NUMERICAL_MODEL."
+                )
             # Align feature columns and order to match training
             try:
-                if hasattr(self.XGB_NUMERICAL_MODEL, 'feature_names_in_'):
+                if hasattr(self.XGB_NUMERICAL_MODEL, "feature_names_in_"):
                     expected = list(self.XGB_NUMERICAL_MODEL.feature_names_in_)
                     for cname in expected:
                         if cname not in self.X3.columns:
@@ -203,11 +263,14 @@ class URL_PREDICTOR(object):
             except Exception:
                 pass
             # Lấy xác suất dự đoán
-            if hasattr(self.XGB_NUMERICAL_MODEL, 'predict_proba'):
+            if hasattr(self.XGB_NUMERICAL_MODEL, "predict_proba"):
                 self.predictions = self.XGB_NUMERICAL_MODEL.predict_proba(self.X3)
                 # Nếu là multi-label, predict_proba trả về list các mảng, cần stack lại
                 if isinstance(self.predictions, list):
-                    self.predictions = np.stack([p[:, 1] if p.shape[1] == 2 else p for p in self.predictions], axis=1)
+                    self.predictions = np.stack(
+                        [p[:, 1] if p.shape[1] == 2 else p for p in self.predictions],
+                        axis=1,
+                    )
                 # Nếu là binary/multi-label dạng (n_samples, n_classes)
                 self.predicted_labels = (self.predictions > threshold).astype(int)
             else:
@@ -217,11 +280,16 @@ class URL_PREDICTOR(object):
         else:
             self.X4_pre_processing()
             if self.XGB_NON_NUMERICAL_MODEL is None:
-                raise ValueError("XGB non-numerical model not loaded. Call URL_PREDICTOR.preload(['xgb_non']) once, or set predictor.XGB_NON_NUMERICAL_MODEL.")
-            if hasattr(self.XGB_NON_NUMERICAL_MODEL, 'predict_proba'):
+                raise ValueError(
+                    "XGB non-numerical model not loaded. Call URL_PREDICTOR.preload(['xgb_non']) once, or set predictor.XGB_NON_NUMERICAL_MODEL."
+                )
+            if hasattr(self.XGB_NON_NUMERICAL_MODEL, "predict_proba"):
                 self.predictions = self.XGB_NON_NUMERICAL_MODEL.predict_proba(self.X4)
                 if isinstance(self.predictions, list):
-                    self.predictions = np.stack([p[:, 1] if p.shape[1] == 2 else p for p in self.predictions], axis=1)
+                    self.predictions = np.stack(
+                        [p[:, 1] if p.shape[1] == 2 else p for p in self.predictions],
+                        axis=1,
+                    )
                 self.predicted_labels = (self.predictions > threshold).astype(int)
             else:
                 self.predictions = self.XGB_NON_NUMERICAL_MODEL.predict(self.X4)
@@ -230,7 +298,9 @@ class URL_PREDICTOR(object):
     @timer
     def print_result(self):
         if self.predictions is not None and self.predicted_labels is not None:
-            for i, (pred, prob) in enumerate(zip(self.predicted_labels, self.predictions)):
+            for i, (pred, prob) in enumerate(
+                zip(self.predicted_labels, self.predictions)
+            ):
                 print(f"\nSample {i + 1} - Url: {self.url}")
                 for label, p, pl in zip(Config.LABEL_NAMES, prob, pred):
                     print(f"{label}: Probability = {p:.4f}, Predicted = {bool(pl)}")
@@ -240,14 +310,23 @@ class URL_PREDICTOR(object):
 
     @timer
     def X1_pre_processing(self):
-        self.X1 = self.df.drop(columns=['label', 'url'], errors='ignore')
-        columns_to_scale = [col for col in self.X1.columns if
-                            col not in ['domain_registration_length', 'domain_age', 'page_rank', 'google_index']]
-        if getattr(self, 'scaler', None) is None:
+        self.X1 = self.df.drop(columns=["label", "url"], errors="ignore")
+        columns_to_scale = [
+            col
+            for col in self.X1.columns
+            if col
+            not in [
+                "domain_registration_length",
+                "domain_age",
+                "page_rank",
+                "google_index",
+            ]
+        ]
+        if getattr(self, "scaler", None) is None:
             self.load_scaler(Config.SCALER_PATH)
         try:
             # If scaler has learned feature order, align to it before transform
-            if hasattr(self.scaler, 'feature_names_in_'):
+            if hasattr(self.scaler, "feature_names_in_"):
                 expected = list(self.scaler.feature_names_in_)
                 for cname in expected:
                     if cname not in self.X1.columns:
@@ -256,14 +335,21 @@ class URL_PREDICTOR(object):
                 transformed = self.scaler.transform(self.X1[expected])
                 # Overwrite the expected columns with transformed values
                 import pandas as pd
-                self.X1[expected] = pd.DataFrame(transformed, columns=expected, index=self.X1.index)
+
+                self.X1[expected] = pd.DataFrame(
+                    transformed, columns=expected, index=self.X1.index
+                )
             else:
-                self.X1[columns_to_scale] = self.scaler.transform(self.X1[columns_to_scale])
+                self.X1[columns_to_scale] = self.scaler.transform(
+                    self.X1[columns_to_scale]
+                )
         except Exception:
             # If scaler is not fitted (fallback case), fit on current data then transform
             if len(columns_to_scale) > 0:
                 self.scaler.fit(self.X1[columns_to_scale])
-                self.X1[columns_to_scale] = self.scaler.transform(self.X1[columns_to_scale])
+                self.X1[columns_to_scale] = self.scaler.transform(
+                    self.X1[columns_to_scale]
+                )
         self.X1 = np.expand_dims(self.X1, axis=-1)
 
     def load_scaler(self, PATH):
@@ -278,6 +364,7 @@ class URL_PREDICTOR(object):
             else:
                 # Create a default scaler if not found
                 from sklearn.preprocessing import MinMaxScaler
+
                 self.scaler = MinMaxScaler()
                 self._SCALER_CACHE[PATH] = self.scaler
                 logging.info(f"Scaler not found at {PATH}, using default MinMaxScaler")
@@ -285,14 +372,15 @@ class URL_PREDICTOR(object):
             logging.error(f"Error loading {PATH}: {e}")
             # Use default scaler
             from sklearn.preprocessing import MinMaxScaler
+
             self.scaler = MinMaxScaler()
             self._SCALER_CACHE[PATH] = self.scaler
 
     @timer
     def X2_pre_processing(self):
-        self.X2 = self.df['url'] if 'url' in self.df.columns else pd.Series([self.url])
+        self.X2 = self.df["url"] if "url" in self.df.columns else pd.Series([self.url])
         self.albumentations(self.X2)
-        if getattr(self, 'cv2', None) is None:
+        if getattr(self, "cv2", None) is None:
             self.cv2 = self.load_vectorizer(Config.CNN_VECTORIZER_PATH)
         self.X2 = self.cv2.transform(self.corpus).toarray()
         self.X2 = np.expand_dims(self.X2, axis=-1)
@@ -310,28 +398,52 @@ class URL_PREDICTOR(object):
             else:
                 # Create a default vectorizer if not found
                 from sklearn.feature_extraction.text import TfidfVectorizer
+
                 cv = TfidfVectorizer(max_features=1000)
                 self._VECTORIZER_CACHE[PATH] = cv
-                logging.info(f"Vectorizer not found at {PATH}, using default TfidfVectorizer")
+                logging.info(
+                    f"Vectorizer not found at {PATH}, using default TfidfVectorizer"
+                )
         except Exception as e:
             logging.error(f"Error loading {PATH}: {e}")
             # Use default vectorizer
             from sklearn.feature_extraction.text import TfidfVectorizer
+
             cv = TfidfVectorizer(max_features=1000)
             self._VECTORIZER_CACHE[PATH] = cv
         return cv
 
     @timer
     def X3_pre_processing(self):
-        self.X3 = self.df.drop(columns=['label', 'url'], errors='ignore')
+        self.X3 = self.df.drop(columns=["label", "url"], errors="ignore")
 
     @timer
     def X4_pre_processing(self):
-        self.X4 = self.df['url'] if 'url' in self.df.columns else pd.Series([self.url])
+        self.X4 = self.df["url"] if "url" in self.df.columns else pd.Series([self.url])
         self.albumentations2(self.X4)
-        if getattr(self, 'cv4', None) is None:
+        if getattr(self, "cv4", None) is None:
             self.cv4 = self.load_vectorizer(Config.XGB_RF_VECTORIZER_PATH)
         self.X4 = self.cv4.transform(self.corpus).toarray()
+
+    @timer
+    def X5_pre_processing(self):
+        self.X5 = self.df["url"] if "url" in self.df.columns else pd.Series([self.url])
+        self.X5 = self.tokenize_urls(self.X5)
+        self.input_ids = self.X5["input_ids"].to(self.device)
+        self.attention_mask = self.X5["attention_mask"].to(self.device)
+    
+    @timer
+    def tokenize_urls(self, urls, max_length=64):
+        tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+        url_list = urls.tolist() if isinstance(urls, pd.Series) else list(urls)
+        url_list = [url if url.strip() else "placeholder" for url in url_list]
+        return tokenizer(
+            url_list,
+            max_length=max_length,
+            padding=True,
+            truncation=True,
+            return_tensors="pt",
+        )
 
     @staticmethod
     @timer
@@ -341,19 +453,25 @@ class URL_PREDICTOR(object):
             stopwords.words("english")
         except LookupError:
             logging.error("ntlk's stopwords not found! Downloading NLTK stopwords...")
-            nltk.download('stopwords')
+            nltk.download("stopwords")
 
     @timer
     def albumentations(self, X):
         self.download_stopsword()
         for i in range(len(X)):
-            review = X.iloc[i] if hasattr(X, 'iloc') else X[i]
-            review = review.decode('utf-8') if isinstance(review, bytes) else str(review)
-            review = re.sub(r'\?.*', '', review)
-            review = re.sub(r'[^a-zA-Z0-9\-\/.]', ' ', review)
+            review = X.iloc[i] if hasattr(X, "iloc") else X[i]
+            review = (
+                review.decode("utf-8") if isinstance(review, bytes) else str(review)
+            )
+            review = re.sub(r"\?.*", "", review)
+            review = re.sub(r"[^a-zA-Z0-9\-\/.]", " ", review)
             review = review.lower()
             review = review.split()
-            review = [self.ps.stem(word) for word in review if word not in set(stopwords.words("english"))]
+            review = [
+                self.ps.stem(word)
+                for word in review
+                if word not in set(stopwords.words("english"))
+            ]
             review = " ".join(review)
             self.corpus.append(review)
 
@@ -361,14 +479,19 @@ class URL_PREDICTOR(object):
     def albumentations2(self, X):
         self.download_stopsword()
         for i in range(len(X)):
-            review = X.iloc[i] if hasattr(X, 'iloc') else X[i]
-            review = review.decode('utf-8') if isinstance(review, bytes) else str(review)
-            review = re.sub(r'\?.*', '', review)
-            review = re.sub(r'[^a-zA-Z0-9\-\/.]', ' ', review)
+            review = X.iloc[i] if hasattr(X, "iloc") else X[i]
+            review = (
+                review.decode("utf-8") if isinstance(review, bytes) else str(review)
+            )
+            review = re.sub(r"\?.*", "", review)
+            review = re.sub(r"[^a-zA-Z0-9\-\/.]", " ", review)
             review = review.lower()
             review = review.split()
-            review = [self.ps.stem(word) for word in review if
-                      word not in set(stopwords.words("english")) and len(word) > 2]
+            review = [
+                self.ps.stem(word)
+                for word in review
+                if word not in set(stopwords.words("english")) and len(word) > 2
+            ]
             review = " ".join(review)
             self.corpus.append(review)
 
@@ -378,7 +501,9 @@ class URL_PREDICTOR(object):
         try:
             extractor = URL_EXTRACTOR(self.url)
             data = extractor.extract_to_predict()
-            logging.info(f"  URL '{self.url}' took {round(extractor.exec_time, 2)} seconds to extract")
+            logging.info(
+                f"  URL '{self.url}' took {round(extractor.exec_time, 2)} seconds to extract"
+            )
             df.append(data)
         except Exception as e:
             logging.error(f"Error extracting features: {e}")
@@ -392,43 +517,58 @@ class URL_PREDICTOR(object):
                 logging.info(f"{PATH} (from cache) loaded successfully!")
                 return self._MODEL_CACHE[PATH]
             if os.path.exists(PATH):
-                if PATH.endswith('.keras'):
+                if PATH.endswith(".keras"):
                     model = load_model(PATH)
                     logging.info(f"{PATH} (Keras model) loaded successfully!")
-                elif PATH.endswith('.pkl'):
+                elif PATH.endswith(".pkl"):
                     model = joblib.load(PATH)
                     logging.info(f"{PATH} (Pickle model) loaded successfully!")
+                elif PATH.endswith(".pth"):
+                    self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                    pretrained_model = BertModel.from_pretrained("bert-base-uncased")
+                    model = Transformer(pretrained_model, num_classes=4).to(self.device)
+                    model.load_state_dict(torch.load(PATH, map_location=self.device))
+                    model.to(self.device)
+                    logging.info(f"{PATH} (.pth model) loaded successfully!")
                 else:
                     raise ValueError(f"Unsupported model file extension for {PATH}")
                 self._MODEL_CACHE[PATH] = model
             else:
                 logging.info(f"Model not found at {PATH}")
                 # Return lightweight dummy model shims that don't require fitting
-                num_classes = len(self.label_names)
+                num_classes = len(Config.LABEL_NAMES)
+
                 class _DummyProbModel:
                     def __init__(self, n_classes: int):
                         self.n_classes = n_classes
+
                     def predict(self, X):
                         rng = np.random.RandomState(42)
                         return rng.rand(len(X), self.n_classes)
+
                     def predict_proba(self, X):
                         rng = np.random.RandomState(42)
                         return rng.rand(len(X), self.n_classes)
+
                 model = _DummyProbModel(num_classes)
                 logging.info(f"Using dummy model for {PATH}")
         except Exception as e:
             logging.error(f"Error loading model: {e}")
             # Return dummy shim on error as well
-            num_classes = len(self.label_names)
+            num_classes = len(Config.LABEL_NAMES)
+
             class _DummyProbModel:
                 def __init__(self, n_classes: int):
                     self.n_classes = n_classes
+
                 def predict(self, X):
                     rng = np.random.RandomState(42)
                     return rng.rand(len(X), self.n_classes)
+
                 def predict_proba(self, X):
                     rng = np.random.RandomState(42)
                     return rng.rand(len(X), self.n_classes)
+
             model = _DummyProbModel(num_classes)
             logging.error(f"Using dummy model due to error")
         return model
