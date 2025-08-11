@@ -221,6 +221,7 @@ cython_debug/
 /models/CNN_MODEL_WITH_MULTI_LABELS_79_FEATURES.h5
 /models/CNN_MODEL_WITH_MULTI_LABELS_21_FEATURES.keras
 /models/dataset_1/BERT_MODEL_ON_NON_NUMERICAL_FEATURES.pth
+/models/dataset_2
 
 # Firebase credentials
 configs/firebase-credentials.json

@@ -14,7 +14,7 @@ class Config:
         os.path.join(
             ROOT_DIR,
             "secrets",
-            "multi-labels-urls-firebase-db-firebase-adminsdk-fbsvc-4b4bcf48b7.json",
+            "multi-labels-urls-firebase-db-firebase-adminsdk-fbsvc-87b7743762.json",
         ),
     )
     FIREBASE_DATABASE_URL = os.environ.get(
@@ -41,7 +41,7 @@ class Config:
         "CNN_MODEL_ON_NON_NUMERICAL_FEATURES.keras",
     )
     XGB_NUMERICAL_MODEL_PATH = os.path.join(
-        ROOT_DIR, "models", f"{DEFAULT_DATASET}", "XGB_MODEL_ON_NUMERICAL_FEATURES.pkl"
+            ROOT_DIR, "models", f"{DEFAULT_DATASET}", "XGB_MODEL_ON_NUMERICAL_FEATURES.pkl"
     )
     XGB_NON_NUMERICAL_MODEL_PATH = os.path.join(
         ROOT_DIR,

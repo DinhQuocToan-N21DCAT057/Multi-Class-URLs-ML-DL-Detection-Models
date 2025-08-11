@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<title>URL Guard</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<h3>URL Guard</h3>
+
+<label>API Endpoint
+  <select id="endpoint">
+    <option value="single">Predict Single Model</option>
+    <option value="multi">Predict Multi Model</option>
+  </select>
+</label>
+
+<label id="label-url">URL
+  <input type="text" id="url" placeholder="https://example.com" />
+</label>
+
+<label id="label-model">Model
+  <select id="model">
+    <option value="cnn">cnn</option>
+    <option value="xgb">xgb</option>
+    <option value="rf">rf</option>
+    <option value="bert">bert</option>
+  </select>
+</label>
+
+<label id="label-threshold">Threshold
+  <input type="number" id="threshold" step="0.01" min="0" max="1" value="0.87" />
+</label>
+
+<label id="label-numerical"><input type="checkbox" id="numerical" /> Numerical (1 = checked)</label>
+
+<div>
+  <button id="send">Send</button>
+  <button id="fill-current">Fill current tab URL</button>
+</div>
+
+<h4>Response</h4>
+<div id="status"></div>
+<pre id="result" class="json-output">(no result yet)</pre>
+
+<script src="popup.js"></script>
+</body>
+</html>

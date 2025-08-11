@@ -14,6 +14,7 @@ from tensorflow.keras.models import load_model
 from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
 from transformers import BertTokenizer, BertModel
+from xgboost import XGBClassifier
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
@@ -603,13 +604,17 @@ class URL_PREDICTOR(object):
                 elif PATH.endswith(".pkl"):
                     model = joblib.load(PATH)
                     logging.info(f"{PATH} (Pickle model) loaded successfully!")
+                elif PATH.endswith(".json"):
+                    model = XGBClassifier()
+                    model.load_model(PATH)
+                    logging.info(f"{PATH} (JSON model) loaded successfully!")
                 elif PATH.endswith(".pth"):
                     self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
                     pretrained_model = BertModel.from_pretrained("bert-base-uncased")
                     model = Transformer(pretrained_model, num_classes=4).to(self.device)
                     model.load_state_dict(torch.load(PATH, map_location=self.device))
                     model.to(self.device)
-                    logging.info(f"{PATH} (.pth model) loaded successfully!")
+                    logging.info(f"{PATH} (Pytorch model) loaded successfully!")
                 else:
                     raise ValueError(f"Unsupported model file extension for {PATH}")
                 self._MODEL_CACHE[PATH] = model
