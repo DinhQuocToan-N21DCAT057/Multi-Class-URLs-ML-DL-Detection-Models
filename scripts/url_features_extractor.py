@@ -2539,3 +2539,70 @@ class URL_EXTRACTOR(object):
             data[key] = func()
 
         return data
+
+    @timer
+    def extract_to_predict2(self):
+        data = {}
+        # List of (key, function) pairs for all features
+        feature_funcs = [
+            ("url", lambda: self.url),
+            ("url_len", self.url_len),
+            ("hostname_len", self.hostname_len),
+            ("entropy", self.entropy),
+            ("nb_dots", self.count_dots),
+            ("nb_hyphens", self.count_hyphens),
+            ("nb_exclamation", self.count_exclamation),
+            ("nb_and", self.count_and),
+            ("nb_equal", self.count_equal),
+            ("nb_underscore", self.count_underscore),
+            ("nb_tilde", self.count_tilde),
+            ("nb_percentage", self.count_percentage),
+            ("nb_slash", self.count_slash),
+            ("nb_colon", self.count_colon),
+            ("nb_semicolumn", self.count_semicolumn),
+            ("nb_space", self.count_space),
+            ("nb_http_token", self.count_http_token),
+            ("nb_subdomain", self.count_subdomain),
+            ("nb_www", self.count_www),
+            ("nb_com", self.count_com),
+            ("nb_phish_hints", self.count_phish_hints),
+            ("has_ip", self.having_ip_address),
+            ("has_https", self.has_https),
+            ("has_port", self.has_port),
+            ("has_tld_in_path", self.has_tld_in_path),
+            ("has_tld_in_subdomain", self.has_tld_in_subdomain),
+            ("has_abnormal_subdomain", self.has_abnormal_subdomain),
+            ("has_prefix_suffix", self.has_prefix_suffix),
+            ("has_short_svc", self.has_shortening_service),
+            ("has_path_exe_extension", self.has_path_exe_extension),
+            ("has_domain_in_brand", self.has_domain_in_brand),
+            ("has_sus_tld", self.has_suspecious_tld),
+            ("has_statistical_report", self.has_statistical_report),
+            ("word_raw_len", self.length_word_raw),
+            ("char_repeat", self.char_repeat),
+            ("shortest_word_raw_len", self.shortest_word_raw_length),
+            ("shortest_word_raw_host_len", self.shortest_word_raw_host_length),
+            ("shortest_word_raw_path_len", self.shortest_word_raw_path_length),
+            ("longest_word_raw_len", self.longest_word_raw_length),
+            ("longest_word_raw_host_len", self.longest_word_raw_host_length),
+            ("longest_word_raw_path_len", self.longest_word_raw_path_length),
+            ("avg_word_raw_len", self.average_word_raw_length),
+            ("avg_word_raw_host_len", self.average_word_raw_host_length),
+            ("avg_word_raw_path_len", self.average_word_raw_path_length),
+            ("ratio_digits_url", self.ratio_digits_url),
+            # External Features
+            ("whois_reg_domain", self.whois_registered_domain),
+            ("domain_reg_len", self.domain_registration_length),
+            ("domain_age", self.domain_age),
+            ("dns_record", self.dns_record),
+            ("page_rank", self.page_rank),
+            # Label
+            ("label", lambda: self.label),
+        ]
+
+        for key, func in tqdm(
+            feature_funcs, desc="  Extracting features", unit="feature"
+        ):
+            data[key] = func()
+
+        return data
