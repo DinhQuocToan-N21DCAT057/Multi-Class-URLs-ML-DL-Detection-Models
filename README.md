@@ -141,6 +141,7 @@ This project implements a fast, scalable malicious URL detection system capable 
   ```
 
 ### Web Application
+- **Put your Firebase's Cred in folder 'secrets'**
 - **Run the Flask App**:
   ```bash
   python ./run.py
@@ -173,6 +174,6 @@ This project implements a fast, scalable malicious URL detection system capable 
   - Open your browser.
   - Import the `brower-extension` folder to load the extension.
 ## Resources
-- **Dataset**: [Web Page Phishing Detection Dataset](https://www.kaggle.com/datasets/shashwatwork/web-page-phishing-detection-dataset/)  
-- **Python Script References**: [Mendeley Data](https://data.mendeley.com/datasets/c2gw7fy2j4/3)  
-- **Jupyter Notebook**: [View on nbviewer](https://nbviewer.org/github/DinhQuocToan-N21DCAT057/Phishing-Website-Detection-Models/blob/main/LSTM-CNN-Transformer-Phising-Website-Detection.ipynb)
+- **Dataset**: [Multi-Class Dataset](https://www.kaggle.com/datasets/sid321axn/malicious-urls-dataset)    
+- **Jupyter Notebook**: [Tranning Models](https://nbviewer.org/github/DinhQuocToan-N21DCAT057/Multi-Class-URLs-ML-DL-Detection-Models/blob/main/Multi-Classes-URLs-ML&DL-Detection-Models.ipynb)
+- **Jupyter Notebook**: [Generate Dataset](https://nbviewer.org/github/DinhQuocToan-N21DCAT057/Multi-Class-URLs-ML-DL-Detection-Models/blob/main/Multi-Classes-Dataset-Generator.ipynb)
