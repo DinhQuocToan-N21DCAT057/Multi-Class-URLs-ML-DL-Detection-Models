@@ -174,6 +174,7 @@ This project implements a fast, scalable malicious URL detection system capable 
   - Open your browser.
   - Import the `brower-extension` folder to load the extension.
 ## Resources
-- **Dataset**: [Multi-Class Dataset](https://www.kaggle.com/datasets/sid321axn/malicious-urls-dataset)    
+- **Dataset**: [Multi-Class Dataset](https://www.kaggle.com/datasets/sid321axn/malicious-urls-dataset)
+- **Access Tranning Dataset**: [Dataset Archive](https://drive.google.com/drive/folders/17-Nlva0XkE7YX2YqlGtideCk1Sziv7uj?usp=sharing)
 - **Jupyter Notebook**: [Tranning Models](https://nbviewer.org/github/DinhQuocToan-N21DCAT057/Multi-Class-URLs-ML-DL-Detection-Models/blob/main/Multi-Classes-URLs-ML&DL-Detection-Models.ipynb)
 - **Jupyter Notebook**: [Generate Dataset](https://nbviewer.org/github/DinhQuocToan-N21DCAT057/Multi-Class-URLs-ML-DL-Detection-Models/blob/main/Multi-Classes-Dataset-Generator.ipynb)
