@@ -1,10 +1,9 @@
 # Multi-Labels-URLs-ML-DL-Detection-Models
 
-# Phishing Website Detection Models
+## Introduction
+This project implements a fast, scalable malicious URL detection system capable of classifying URLs into four categories: benign, defacement, malware, and phishing. It features an optimized Python-based URL feature extraction pipeline used for large-scale dataset generation (~600k URLs) and real-time prediction. The dataset imbalance was addressed by augmenting the “malware” class with additional samples from the URLHaus database, producing balanced subsets for model training. Four models—CNN, XGBoost, Random Forest, and Transformer-BERT—were trained and evaluated in Google Colab using metrics such as Confusion Matrix, Macro-F1 score, PR-AUC, and Macro-PR-AUC.
 
-#Dataset Features
-
-### Dataset Features Overview (from `scripts/url_features_extractor.py` → `extract_to_dataset()`)
+## Dataset Features Overview (from `scripts/url_features_extractor.py` → `extract_to_dataset()`)
 - Total: 91 features (59 URL/lexical, 27 content-based, 6 external) + 1 label.
 
 - URL/Lexical features (examples):
@@ -28,9 +27,6 @@
 ![Label Distribution](static/images/share/Label_Distribution.png)
 
 ![Top 30 Important Features](static/images/share/Top_30_Important_Features.png)
-
-## Introduction
-This project implements a fast, scalable malicious URL detection system capable of classifying URLs into four categories: benign, defacement, malware, and phishing. It features an optimized Python-based URL feature extraction pipeline used for large-scale dataset generation (~600k URLs) and real-time prediction. The dataset imbalance was addressed by augmenting the “malware” class with additional samples from the URLHaus database, producing balanced subsets for model training. Four models—CNN, XGBoost, Random Forest, and Transformer-BERT—were trained and evaluated in Google Colab using metrics such as Confusion Matrix, Macro-F1 score, PR-AUC, and Macro-PR-AUC.
 
 ## Summary Results of Each Model
 
