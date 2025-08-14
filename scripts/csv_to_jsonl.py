@@ -4,8 +4,6 @@ import pandas as pd
 import argparse
 import json
 
-from scripts.dataset_processing import file
-
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 if __name__ == '__main__':
@@ -24,10 +22,25 @@ if __name__ == '__main__':
         sys.exit(1)
 
     file_path = os.path.join(dir_path, args.file)
+    if not os.path.isfile(file_path):
+        print(f"CSV file not found: '{file_path}'")
+        sys.exit(1)
     
-    df = pd.read(file_path)
+    try:
+        df = pd.read_csv(file_path)
+    except Exception as e:
+        print(f"Failed to read CSV '{file_path}': {e}")
+        sys.exit(1)
 
-    with open(f"{args.file}.jsonl", "w", encoding="utf-8") as f:
+    if 'label' not in df.columns:
+        print("Required column 'label' not found in CSV. Available columns:")
+        print(list(df.columns))
+        sys.exit(1)
+
+    base_name = os.path.splitext(os.path.basename(args.file))[0]
+    out_path = os.path.join(dir_path, f"{base_name}.jsonl")
+
+    with open(out_path, "w", encoding="utf-8") as f:
         for _, row in df.iterrows():
             # Bỏ cột label ra để làm prompt
             features = {col: row[col] for col in df.columns if col != "label"}
@@ -43,4 +56,4 @@ if __name__ == '__main__':
             json.dump({"prompt": prompt, "completion": completion}, f, ensure_ascii=False)
             f.write("\n")
 
-    print(f"✅ Complete parsing from .csv to .jsonl! File name: {args.file}.jsonl")
+    print(f"✅ Complete parsing from .csv to .jsonl. File: {out_path}")
