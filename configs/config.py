@@ -72,6 +72,23 @@ class Config:
         ROOT_DIR, "models", f"{DEFAULT_DATASET}", "tfidf_vectorizer_XGB_RF.pkl"
     )
 
+    Llama_32_1B_LoRA_PATH = os.path.join(
+        ROOT_DIR, "models", f"{DEFAULT_DATASET}", "llama-32-1B-lora"
+    )
+
+    # Hugging Face token: load from secrets/HF_Token.txt, fallback to env vars
+    HF_TOKEN_FILE = os.path.join(ROOT_DIR, "secrets", "HF_Token.txt")
+    try:
+        with open(HF_TOKEN_FILE, "r", encoding="utf-8") as _hf:
+            HF_TOKEN = _hf.read().strip()
+    except Exception:
+        HF_TOKEN = (
+            os.environ.get("HF_TOKEN")
+            or os.environ.get("HUGGINGFACE_TOKEN")
+            or os.environ.get("HUGGINGFACEHUB_API_TOKEN")
+            or ""
+        )
+
     # Application settings
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file upload
     JSONIFY_PRETTYPRINT_REGULAR = True
@@ -80,7 +97,7 @@ class Config:
     AVAILABLE_DATASETS = ["dataset_1", "dataset_2", "dataset_3"]
 
     # Available model types
-    AVAILABLE_MODELS = ["cnn", "xgb", "rf", "bert"]
+    AVAILABLE_MODELS = ["cnn", "xgb", "rf", "bert", "llama"]
 
     # Label mappings
     LABEL_NAMES = ["benign", "defacement", "malware", "phishing"]

@@ -62,6 +62,8 @@ def save_prediction_to_firebase(
                 return "XGB_NUM" if numerical else "XGB_NON"
             if name.startswith("RF"):
                 return "RF_NUM" if numerical else "RF_NON"
+            if name.startswith("LLAMA"):
+                return "LLAMA"
             return "TRANS"
 
         # Normalize predictions and save each model result
@@ -266,6 +268,7 @@ def predict_url():
             "xgb": "XGB_NUM" if numerical else "XGB_NON",
             "rf": "RF_NUM" if numerical else "RF_NON",
             "bert": "BERT_NON",  # BERT only has non-numerical variant
+            "llama": "LLAMA",    # LLaMA-LoRA classifier
         }
         model_firebase_key = model_key_map.get(model_type)
         if model_firebase_key is None:
@@ -354,6 +357,8 @@ def predict_url():
             predictor.predict_with_RF(threshold=threshold, numerical=numerical)
         elif model_type == "bert":
             predictor.predict_with_TF_BERT(threshold=threshold)
+        elif model_type == "llama":
+            predictor.predict_with_LLaMA_LoRA()
         else:
             return jsonify({"error": "Mô hình không hợp lệ"}), 400
         
@@ -447,6 +452,7 @@ def predict_multi_model():
             ("rf", True, "RF_NUM"),
             ("rf", False, "RF_NON"),
             ("bert", False, "BERT_NON"),  # BERT only has non-numerical variant
+            ("llama", False, "LLAMA"),     # LLaMA-LoRA prompt-based classifier
         ]
 
         cached_results = []
@@ -562,6 +568,8 @@ def predict_multi_model():
                     predictor.predict_with_RF(threshold=threshold, numerical=numerical)
                 elif model_type == "bert":
                     predictor.predict_with_TF_BERT(threshold=threshold)
+                elif model_type == "llama":
+                    predictor.predict_with_LLaMA_LoRA()
                 else:
                     logging.error(f"Multi-model prediction: Unknown model type: {model_type}")
                     continue
@@ -627,6 +635,17 @@ def predict_multi_model():
                         numerical=numerical,
                         threshold=threshold,
                     )
+
+            # Save LLAMA (non-suffixed) results
+            llama_results = [res for res in new_results if res.get("model_name") == "LLAMA"]
+            if llama_results:
+                save_prediction_to_firebase(
+                    url,
+                    features,
+                    llama_results,
+                    numerical=False,
+                    threshold=threshold,
+                )
 
         # Calculate execution time
         execution_time_ms = (time.time() - start_time) * 1000

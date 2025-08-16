@@ -8,12 +8,17 @@ import joblib
 import logging
 import time
 import torch
+import torch.nn as nn
+import warnings
 
+from typing import Dict
 from functools import wraps
 from tensorflow.keras.models import load_model
 from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
-from transformers import BertTokenizer, BertModel
+from transformers import BertTokenizer, BertModel, AutoTokenizer, AutoModelForCausalLM
+from peft import PeftModel
+from huggingface_hub import login as hf_login
 from xgboost import XGBClassifier
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -27,6 +32,8 @@ from scripts.transformers_model import Transformer
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
+
+warnings.filterwarnings("ignore")
 
 
 def timer(func):
@@ -57,12 +64,18 @@ class URL_PREDICTOR(object):
     _MODEL_CACHE = {}
     _VECTORIZER_CACHE = {}
     _SCALER_CACHE = {}
+    _LLAMA_CACHE = {
+        "model": None,
+        "tokenizer": None,
+        "classifier": None,
+        "device": None,
+    }
 
     @classmethod
     def preload(cls, models_to_load=None):
         """Optionally preload selected models once and cache them.
 
-        models_to_load can include: 'cnn_num', 'cnn_non', 'xgb_num', 'xgb_non', 'rf_num', 'rf_non, bert_non'
+        models_to_load can include: 'cnn_num', 'cnn_non', 'xgb_num', 'xgb_non', 'rf_num', 'rf_non, bert_non', 'llama-32-1b-lora'
         """
         if not models_to_load:
             return
@@ -74,6 +87,7 @@ class URL_PREDICTOR(object):
             "rf_num": Config.RF_NUMERICAL_MODEL_PATH,
             "rf_non": Config.RF_NON_NUMERICAL_MODEL_PATH,
             "bert_non": Config.BERT_NON_NUMERICAL_MODEL_PATH,
+            "llama-32-1b-lora": Config.Llama_32_1B_LoRA_PATH,
         }
         # Temporary instance to reuse model_loader
         temp = cls.__new__(cls)
@@ -139,6 +153,9 @@ class URL_PREDICTOR(object):
         self.RF_NON_NUMERICAL_MODEL = self._MODEL_CACHE.get(
             Config.RF_NON_NUMERICAL_MODEL_PATH
         )
+        self.Llama_32_1B_LoRA_MODEL = self._MODEL_CACHE.get(
+            Config.Llama_32_1B_LoRA_PATH
+        )
         self.scaler = self._SCALER_CACHE.get(Config.SCALER_PATH)
         self.cv2 = self._VECTORIZER_CACHE.get(Config.CNN_VECTORIZER_PATH)
         self.cv4 = self._VECTORIZER_CACHE.get(Config.XGB_RF_VECTORIZER_PATH)
@@ -165,10 +182,7 @@ class URL_PREDICTOR(object):
 
         self.BERT_NON_NUMERICAL_MODEL.eval()
         with torch.no_grad():
-            logits = self.BERT_NON_NUMERICAL_MODEL(
-                self.input_ids,
-                self.attention_mask
-            )
+            logits = self.BERT_NON_NUMERICAL_MODEL(self.input_ids, self.attention_mask)
             # Multi-class → softmax
             probs = torch.softmax(logits, dim=1).cpu().numpy()
 
@@ -220,7 +234,10 @@ class URL_PREDICTOR(object):
                     # Handle multi-label case where predict_proba returns list of arrays
                     try:
                         self.predictions = np.stack(
-                            [p[:, 1] if p.shape[1] == 2 else p for p in self.predictions],
+                            [
+                                p[:, 1] if p.shape[1] == 2 else p
+                                for p in self.predictions
+                            ],
                             axis=1,
                         )
                     except Exception as e:
@@ -228,7 +245,7 @@ class URL_PREDICTOR(object):
                         # Fallback: convert each prediction to array and stack manually
                         pred_arrays = []
                         for p in self.predictions:
-                            if hasattr(p, 'shape') and p.shape[1] == 2:
+                            if hasattr(p, "shape") and p.shape[1] == 2:
                                 pred_arrays.append(p[:, 1])
                             else:
                                 pred_arrays.append(np.array(p).flatten())
@@ -241,7 +258,9 @@ class URL_PREDICTOR(object):
 
                     # Additional safety check - force conversion if still a list
                     if isinstance(self.predictions, list):
-                        logging.error(f"RF predictions still a list after conversion: {type(self.predictions)}")
+                        logging.error(
+                            f"RF predictions still a list after conversion: {type(self.predictions)}"
+                        )
                         self.predictions = np.array(self.predictions, dtype=float)
 
                     # Ensure it's a 2D array for threshold comparison
@@ -249,12 +268,19 @@ class URL_PREDICTOR(object):
                         self.predictions = self.predictions.reshape(1, -1)
 
                     # Safe threshold comparison with explicit type checking
-                    if isinstance(threshold, (int, float)) and isinstance(self.predictions, np.ndarray):
-                        self.predicted_labels = (self.predictions > threshold).astype(int)
+                    if isinstance(threshold, (int, float)) and isinstance(
+                        self.predictions, np.ndarray
+                    ):
+                        self.predicted_labels = (self.predictions > threshold).astype(
+                            int
+                        )
                     else:
                         logging.error(
-                            f"RF threshold comparison failed: threshold={type(threshold)}, predictions={type(self.predictions)}")
-                        self.predicted_labels = np.zeros_like(self.predictions, dtype=int)
+                            f"RF threshold comparison failed: threshold={type(threshold)}, predictions={type(self.predictions)}"
+                        )
+                        self.predicted_labels = np.zeros_like(
+                            self.predictions, dtype=int
+                        )
 
                 except Exception as e:
                     logging.error(f"RF prediction processing failed: {e}")
@@ -330,7 +356,10 @@ class URL_PREDICTOR(object):
                     # Handle multi-label case where predict_proba returns list of arrays
                     try:
                         self.predictions = np.stack(
-                            [p[:, 1] if p.shape[1] == 2 else p for p in self.predictions],
+                            [
+                                p[:, 1] if p.shape[1] == 2 else p
+                                for p in self.predictions
+                            ],
                             axis=1,
                         )
                     except Exception as e:
@@ -338,7 +367,7 @@ class URL_PREDICTOR(object):
                         # Fallback: convert each prediction to array and stack manually
                         pred_arrays = []
                         for p in self.predictions:
-                            if hasattr(p, 'shape') and p.shape[1] == 2:
+                            if hasattr(p, "shape") and p.shape[1] == 2:
                                 pred_arrays.append(p[:, 1])
                             else:
                                 pred_arrays.append(np.array(p).flatten())
@@ -351,7 +380,9 @@ class URL_PREDICTOR(object):
 
                     # Additional safety check - force conversion if still a list
                     if isinstance(self.predictions, list):
-                        logging.error(f"XGB predictions still a list after conversion: {type(self.predictions)}")
+                        logging.error(
+                            f"XGB predictions still a list after conversion: {type(self.predictions)}"
+                        )
                         self.predictions = np.array(self.predictions, dtype=float)
 
                     # Ensure it's a 2D array for threshold comparison
@@ -359,12 +390,19 @@ class URL_PREDICTOR(object):
                         self.predictions = self.predictions.reshape(1, -1)
 
                     # Safe threshold comparison with explicit type checking
-                    if isinstance(threshold, (int, float)) and isinstance(self.predictions, np.ndarray):
-                        self.predicted_labels = (self.predictions > threshold).astype(int)
+                    if isinstance(threshold, (int, float)) and isinstance(
+                        self.predictions, np.ndarray
+                    ):
+                        self.predicted_labels = (self.predictions > threshold).astype(
+                            int
+                        )
                     else:
                         logging.error(
-                            f"XGB threshold comparison failed: threshold={type(threshold)}, predictions={type(self.predictions)}")
-                        self.predicted_labels = np.zeros_like(self.predictions, dtype=int)
+                            f"XGB threshold comparison failed: threshold={type(threshold)}, predictions={type(self.predictions)}"
+                        )
+                        self.predicted_labels = np.zeros_like(
+                            self.predictions, dtype=int
+                        )
 
                 except Exception as e:
                     logging.error(f"XGB prediction processing failed: {e}")
@@ -380,7 +418,7 @@ class URL_PREDICTOR(object):
     def print_result(self):
         if self.predictions is not None and self.predicted_labels is not None:
             for i, (pred, prob) in enumerate(
-                    zip(self.predicted_labels, self.predictions)
+                zip(self.predicted_labels, self.predictions)
             ):
                 print(f"\nSample {i + 1} - Url: {self.url}")
                 for label, p, pl in zip(Config.LABEL_NAMES, prob, pred):
@@ -396,12 +434,12 @@ class URL_PREDICTOR(object):
             col
             for col in self.X1.columns
             if col
-               not in [
-                   "domain_registration_length",
-                   "domain_age",
-                   "page_rank",
-                   "google_index",
-               ]
+            not in [
+                "domain_registration_length",
+                "domain_age",
+                "page_rank",
+                "google_index",
+            ]
         ]
         if getattr(self, "scaler", None) is None:
             self.load_scaler(Config.SCALER_PATH)
@@ -513,6 +551,55 @@ class URL_PREDICTOR(object):
         self.input_ids = self.X5["input_ids"].to(self.device)
         self.attention_mask = self.X5["attention_mask"].to(self.device)
 
+    def X6_pre_processing(self):
+        row = (
+            self.df.iloc[0].to_dict()
+            if hasattr(self, "df") and len(self.df) > 0
+            else {}
+        )
+        if "label" in row:
+            row.pop("label", None)
+        feature_kv = []
+        # Keep url first if present, then others in stable sorted order
+        if "url" in row:
+            feature_kv.append(f"url={row['url']}")
+            row.pop("url", None)
+        for k in sorted(row.keys()):
+            feature_kv.append(f"{k}={row[k]}")
+        feature_str = ", ".join(feature_kv)
+        prompt = f"Given the URL features: {feature_str}. Predict the category:"
+        self.X6 = self.tokenizer_prompts([prompt])
+
+    def tokenizer_prompts(self, prompts, max_length=256):
+        # Accept a list[str] or single string
+        if isinstance(prompts, str):
+            prompts = [prompts]
+        prompts = [str(p) if p is not None else "" for p in prompts]
+        # Prefer cached tokenizer from preloaded LLaMA-LoRA bundle
+        tokenizer = None
+        try:
+            if getattr(self, "Llama_32_1B_LoRA_MODEL", None):
+                tok = self.Llama_32_1B_LoRA_MODEL.get("tokenizer")
+                if tok is not None:
+                    tokenizer = tok
+        except Exception:
+            tokenizer = None
+        if tokenizer is None:
+            # Fallback: load tokenizer from local LoRA folder; then base
+            try:
+                tokenizer = AutoTokenizer.from_pretrained(Config.Llama_32_1B_LoRA_PATH)
+            except Exception:
+                tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.2-1B")
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
+        return tokenizer(
+            prompts,
+            truncation=True,
+            padding=True,
+            max_length=max_length,
+            return_tensors="pt",
+        )
+
     @timer
     def tokenize_urls(self, urls, max_length=64):
         tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
@@ -609,12 +696,28 @@ class URL_PREDICTOR(object):
                     model.load_model(PATH)
                     logging.info(f"{PATH} (JSON model) loaded successfully!")
                 elif PATH.endswith(".pth"):
-                    self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                    self.device = torch.device(
+                        "cuda" if torch.cuda.is_available() else "cpu"
+                    )
                     pretrained_model = BertModel.from_pretrained("bert-base-uncased")
                     model = Transformer(pretrained_model, num_classes=4).to(self.device)
                     model.load_state_dict(torch.load(PATH, map_location=self.device))
                     model.to(self.device)
                     logging.info(f"{PATH} (Pytorch model) loaded successfully!")
+                elif os.path.isdir(PATH) and (
+                    os.path.exists(os.path.join(PATH, "adapter_config.json"))
+                    or os.path.exists(os.path.join(PATH, "adapter_model.safetensors"))
+                ):
+                    # Load LoRA bundle
+                    llama_model, classifier_head, tokenizer, device = self._load_llama_lora()
+                    model = {
+                        "type": "llama_lora_bundle",
+                        "model": llama_model,
+                        "classifier": classifier_head,
+                        "tokenizer": tokenizer,
+                        "device": device,
+                    }
+                    logging.info(f"{PATH} (LoRA bundle) loaded successfully!")
                 else:
                     raise ValueError(f"Unsupported model file extension for {PATH}")
                 self._MODEL_CACHE[PATH] = model
@@ -657,3 +760,214 @@ class URL_PREDICTOR(object):
             model = _DummyProbModel(num_classes)
             logging.error(f"Using dummy model due to error")
         return model
+
+    @timer
+    def _load_llama_lora(self):
+        """Load and cache LLaMA-3.2-1B with LoRA adapter and classifier head for multi-class classification.
+
+        Returns a tuple: (peft_model, classifier_head, tokenizer, device)
+        """
+        # Return from cache if available
+        if self._LLAMA_CACHE.get("model") is not None:
+            return (
+                self._LLAMA_CACHE["model"],
+                self._LLAMA_CACHE["classifier"],
+                self._LLAMA_CACHE["tokenizer"],
+                self._LLAMA_CACHE["device"],
+            )
+
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        # Optional HF login via environment variable to access base model if gated
+        hf_token = (
+            os.environ.get("HF_TOKEN")
+            or os.environ.get("HUGGINGFACE_TOKEN")
+            or os.environ.get("HUGGINGFACEHUB_API_TOKEN")
+            or getattr(Config, "HF_TOKEN", "")
+        )
+        if hf_token and not os.environ.get("HF_TOKEN"):
+            # Make token available to downstream libs in this process
+            os.environ.setdefault("HF_TOKEN", hf_token)
+            os.environ.setdefault("HUGGINGFACE_TOKEN", hf_token)
+            os.environ.setdefault("HUGGINGFACEHUB_API_TOKEN", hf_token)
+        if hf_token:
+            try:
+                hf_login(hf_token)
+            except Exception:
+                pass
+
+        # Helper to call from_pretrained with token across versions
+        def _from_pretrained_with_token(factory, name_or_path, token, **kwargs):
+            try:
+                return factory.from_pretrained(name_or_path, token=token, **kwargs)
+            except TypeError:
+                return factory.from_pretrained(
+                    name_or_path, use_auth_token=token, **kwargs
+                )
+
+        # Load tokenizer from local adapter folder if present
+        try:
+            tokenizer = AutoTokenizer.from_pretrained(Config.Llama_32_1B_LoRA_PATH)
+        except Exception:
+            if hf_token:
+                tokenizer = _from_pretrained_with_token(
+                    AutoTokenizer, "meta-llama/Llama-3.2-1B", hf_token
+                )
+            else:
+                tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.2-1B")
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
+
+        # Load base model and apply LoRA adapter
+        base_model_name = "meta-llama/Llama-3.2-1B"
+        try:
+            if torch.cuda.is_available():
+                # GPU available → allow accelerate dispatch with offload folder
+                offload_dir = os.path.join(Config.Llama_32_1B_LoRA_PATH, "offload")
+                os.makedirs(offload_dir, exist_ok=True)
+                common_kwargs = dict(
+                    torch_dtype=(torch.float16),
+                    low_cpu_mem_usage=True,
+                    device_map="auto",
+                    offload_folder=offload_dir,
+                )
+                if hf_token:
+                    base_model = _from_pretrained_with_token(
+                        AutoModelForCausalLM, base_model_name, hf_token, **common_kwargs
+                    )
+                else:
+                    base_model = AutoModelForCausalLM.from_pretrained(
+                        base_model_name, **common_kwargs
+                    )
+            else:
+                # CPU-only fallback → no accelerate hooks/offload
+                if hf_token:
+                    base_model = _from_pretrained_with_token(
+                        AutoModelForCausalLM,
+                        base_model_name,
+                        hf_token,
+                        torch_dtype=torch.float32,
+                        low_cpu_mem_usage=True,
+                    )
+                else:
+                    base_model = AutoModelForCausalLM.from_pretrained(
+                        base_model_name,
+                        torch_dtype=torch.float32,
+                        low_cpu_mem_usage=True,
+                    )
+        except Exception as e:
+            logging.error(f"Failed to load base LLaMA model: {e}")
+            raise
+
+        try:
+            if torch.cuda.is_available():
+                peft_model = PeftModel.from_pretrained(
+                    base_model,
+                    Config.Llama_32_1B_LoRA_PATH,
+                    device_map="auto",
+                    offload_folder=offload_dir,
+                )
+            else:
+                peft_model = PeftModel.from_pretrained(
+                    base_model,
+                    Config.Llama_32_1B_LoRA_PATH,
+                )
+        except Exception as e:
+            logging.error(
+                f"Failed to load LoRA adapters from {Config.Llama_32_1B_LoRA_PATH}: {e}"
+            )
+            raise
+
+        # Do NOT move the model after accelerate dispatch
+        peft_model.eval()
+
+        # Build classifier head and load weights (keep on CPU; move JIT at inference)
+        hidden_size = getattr(peft_model.config, "hidden_size", None)
+        if hidden_size is None:
+            # Fallback for LLaMA architectures
+            try:
+                hidden_size = (
+                    peft_model.base_model.model.model.embed_tokens.embedding_dim
+                )
+            except Exception:
+                hidden_size = 2048
+        classifier_head = nn.Linear(int(hidden_size), len(Config.LABEL_NAMES))
+
+        classifier_path = os.path.join(Config.Llama_32_1B_LoRA_PATH, "classifier.pt")
+        try:
+            state = torch.load(classifier_path, map_location="cpu")
+            classifier_head.load_state_dict(state)
+            classifier_head.eval()
+        except Exception as e:
+            logging.error(f"Failed to load classifier head from {classifier_path}: {e}")
+            raise
+
+        # Cache
+        self._LLAMA_CACHE["model"] = peft_model
+        self._LLAMA_CACHE["tokenizer"] = tokenizer
+        self._LLAMA_CACHE["classifier"] = classifier_head
+        self._LLAMA_CACHE["device"] = device
+
+        return peft_model, classifier_head, tokenizer, device
+
+    @timer
+    def predict_with_LLaMA_LoRA(self):
+        """Predict multi-class label probabilities using the fine-tuned LLaMA LoRA classifier on textualized features."""
+        # Build prompt from extracted features to match training format
+        self.X6_pre_processing()
+
+        # Tokenize prompt (normalize transformers BatchEncoding → plain dict)
+        inputs = None
+        if isinstance(self.X6, dict):
+            inputs = self.X6
+        else:
+            try:
+                inputs = getattr(self.X6, "data", None) or dict(self.X6)
+            except Exception:
+                inputs = None
+        if not isinstance(inputs, dict) or "input_ids" not in inputs:
+            raise ValueError("Tokenization failed for LLaMA prompts")
+
+        # Load preloaded bundle if available, fallback to on-demand load
+        bundle = getattr(self, "Llama_32_1B_LoRA_MODEL", None)
+        if not bundle:
+            bundle = self.model_loader(Config.Llama_32_1B_LoRA_PATH)
+        if isinstance(bundle, dict) and bundle.get("type") == "llama_lora_bundle":
+            model = bundle["model"]
+            classifier_head = bundle["classifier"]
+        else:
+            # Fallback: load directly
+            model, classifier_head, _, _ = self._load_llama_lora()
+
+        input_ids = inputs["input_ids"]  # keep on CPU; accelerate will handle dispatch
+        attention_mask = inputs.get("attention_mask")
+
+        with torch.no_grad():
+            outputs = model(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                output_hidden_states=True,
+                return_dict=True,
+            )
+            hidden_states = outputs.hidden_states[-1]
+            if attention_mask is not None:
+                mask_expanded = (
+                    attention_mask.unsqueeze(-1).expand(hidden_states.size()).float()
+                )
+                sum_embeddings = torch.sum(hidden_states * mask_expanded, dim=1)
+                sum_mask = torch.clamp(mask_expanded.sum(dim=1), min=1e-9)
+                pooled_output = sum_embeddings / sum_mask
+            else:
+                pooled_output = hidden_states.mean(dim=1)
+
+            # Move classifier head to the same device as pooled_output
+            if next(classifier_head.parameters()).device != pooled_output.device:
+                classifier_head = classifier_head.to(pooled_output.device)
+            logits = classifier_head(pooled_output)
+            probs = torch.softmax(logits, dim=-1).detach().cpu().numpy()
+
+        # Store results in the same fields used elsewhere
+        self.predictions = probs
+        one_hot_preds = np.zeros_like(probs, dtype=int)
+        one_hot_preds[np.arange(len(probs)), np.argmax(probs, axis=1)] = 1
+        self.predicted_labels = one_hot_preds
