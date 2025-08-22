@@ -88,7 +88,7 @@ class Config:
             or os.environ.get("HUGGINGFACEHUB_API_TOKEN")
             or ""
         )
-
+    GSB_API_KEY = os.getenv("GSB_API_KEY", "")
     # Application settings
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file upload
     JSONIFY_PRETTYPRINT_REGULAR = True

@@ -1,5 +1,5 @@
 import pandas as pd
-from url_features_extractor import URL_EXTRACTOR
+from url_features_extractor_v1 import URL_EXTRACTOR
 import os
 import argparse
 import sys
