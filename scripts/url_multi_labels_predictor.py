@@ -26,7 +26,7 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 from configs.config import Config
-from scripts.url_features_extractor import URL_EXTRACTOR
+from scripts.url_features_extractor_v1 import URL_EXTRACTOR
 from scripts.transformers_model import Transformer
 
 logging.basicConfig(
@@ -433,8 +433,7 @@ class URL_PREDICTOR(object):
         columns_to_scale = [
             col
             for col in self.X1.columns
-            if col
-            not in [
+            if col not in [
                 "domain_registration_length",
                 "domain_age",
                 "page_rank",
@@ -709,7 +708,9 @@ class URL_PREDICTOR(object):
                     or os.path.exists(os.path.join(PATH, "adapter_model.safetensors"))
                 ):
                     # Load LoRA bundle
-                    llama_model, classifier_head, tokenizer, device = self._load_llama_lora()
+                    llama_model, classifier_head, tokenizer, device = (
+                        self._load_llama_lora()
+                    )
                     model = {
                         "type": "llama_lora_bundle",
                         "model": llama_model,
@@ -912,7 +913,8 @@ class URL_PREDICTOR(object):
 
     @timer
     def predict_with_LLaMA_LoRA(self):
-        """Predict multi-class label probabilities using the fine-tuned LLaMA LoRA classifier on textualized features."""
+        """Predict multi-class label probabilities using the fine-tuned LLaMA LoRA classifier on textuali
+        zed features."""
         # Build prompt from extracted features to match training format
         self.X6_pre_processing()
 
